@@ -10,10 +10,14 @@ public class PlayerHealthController : NetworkBehaviour
 
     public Action<float> OnDamageTaken;
 
-    [SerializeField] private Image healthbarSprite;
+    public Image healthbarSprite;
+
+    //private StatusEffectsController statusEffectsController;
 
     private void Start()
     {
+        //statusEffectsController = GetComponent<StatusEffectsController>();
+
         healthStats.inResistance = false;
         healthStats.resistancePercentage = 0f;
 
@@ -46,12 +50,18 @@ public class PlayerHealthController : NetworkBehaviour
 
     public void takeDamage(float damageNumber)
     {
-        submitDamageServerRpc(damageNumber);
+        if (!healthStats.isImmortal)
+        {
+            submitDamageServerRpc(damageNumber);
+        }
     }
 
     public void takeDamageByRetaliate(float damageNumber)
     {
-        submitDamageByRetaliateServerRpc(damageNumber);
+        if (!healthStats.isImmortal)
+        {
+            submitDamageByRetaliateServerRpc(damageNumber);
+        }
     }
 
     public void regeneration(float numberHP)
@@ -87,7 +97,7 @@ public class PlayerHealthController : NetworkBehaviour
     {
         if (healthStats.inResistance)
         {
-            number *= (1 - healthStats.resistancePercentage);
+            number *= 1 - healthStats.resistancePercentage;
         }
 
         currentHp.Value -= number;

@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -14,7 +15,9 @@ public class NetworkObjectPool : NetworkBehaviour
 
     private HashSet<GameObject> prefabs = new HashSet<GameObject>();
 
-    private Dictionary<GameObject, ObjectPool<NetworkObject>> pooledObjects = new Dictionary<GameObject, ObjectPool<NetworkObject>>();
+    public Dictionary<GameObject, ObjectPool<NetworkObject>> pooledObjects = new Dictionary<GameObject, ObjectPool<NetworkObject>>();
+
+    //private readonly Dictionary<GameObject, HashSet<NetworkObject>> activeObjects = new Dictionary<GameObject, HashSet<NetworkObject>>();
 
     private Vector3 spawnPoint;
     private ulong clientId;
@@ -98,17 +101,33 @@ public class NetworkObjectPool : NetworkBehaviour
             {
                 networkObject.gameObject.SetActive(true);
             }
+
+            /*if(!activeObjects.ContainsKey(prefab))
+            {
+                activeObjects[prefab] = new HashSet<NetworkObject>();
+            }
+            activeObjects[prefab].Add(networkObject);*/
         }
 
         void ActionOnRelease(NetworkObject networkObject)
         {
 
             networkObject.gameObject.SetActive(false);
+
+            /*if(activeObjects.ContainsKey(prefab))
+            {
+                activeObjects[prefab].Remove(networkObject);
+            }*/
         }
 
         void ActionOnDestroy(NetworkObject networkObject)
         {
             Destroy(networkObject.gameObject);
+
+            /*if (activeObjects.ContainsKey(prefab))
+            {
+                activeObjects[prefab].Remove(networkObject);
+            }*/
         }
 
         prefabs.Add(prefab);
@@ -129,4 +148,17 @@ public class NetworkObjectPool : NetworkBehaviour
         NetworkManager.Singleton.PrefabHandler.AddHandler(prefab, new PooledPrefabInstanceHandler(prefab, this));
 
     }
+
+    /*public List<Wisp> GetActiveWisps(GameObject prefab)
+    {
+        if (activeObjects.TryGetValue(prefab, out var activeNetworkObjects))
+        {
+            return activeNetworkObjects
+                .Select(networkObject => networkObject.GetComponent<Wisp>())
+                .Where(wisp => wisp != null)
+                .ToList();
+        }
+
+        return new List<Wisp>();
+    }*/
 }

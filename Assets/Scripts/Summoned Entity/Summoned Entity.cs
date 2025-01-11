@@ -8,9 +8,9 @@ public abstract class SummonedEntity : NetworkBehaviour
 {
     public PlayerSkillsController owner { get; set; }
 
-    protected bool isNetworkObject = false;
+    public bool isNetworkObject { get; private set; }
 
-    protected Action onDeathCallback;
+    public Action onDeathCallback;
 
     public override void OnNetworkSpawn()
     {
@@ -21,6 +21,4 @@ public abstract class SummonedEntity : NetworkBehaviour
     {
         onDeathCallback = action;
     }
-
-    protected virtual void attack(float damage) { }
 }

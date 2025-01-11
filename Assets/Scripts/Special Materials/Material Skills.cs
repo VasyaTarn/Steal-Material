@@ -3,6 +3,7 @@ using UnityEngine;
 using Unity.Netcode;
 using System.Collections.Generic;
 using Zenject;
+using Unity.Multiplayer.Samples.Utilities.ClientAuthority;
 
 public abstract class MaterialSkills : NetworkBehaviour
 {
@@ -27,13 +28,14 @@ public abstract class MaterialSkills : NetworkBehaviour
 
     public ulong ownerId { get; set; }
 
-    private Dictionary<GameObject, (Inputs inputs, PlayerMovementController movement, PlayerHealthController health, PlayerSkillsController skills, SkinContoller skin)> playerComponents = new Dictionary<GameObject, (Inputs, PlayerMovementController, PlayerHealthController, PlayerSkillsController, SkinContoller)>();
+    private Dictionary<GameObject, (Inputs inputs, PlayerMovementController movement, PlayerHealthController health, PlayerSkillsController skills, SkinContoller skin, ClientNetworkTransform networkTransform)> playerComponents = new Dictionary<GameObject, (Inputs, PlayerMovementController, PlayerHealthController, PlayerSkillsController, SkinContoller, ClientNetworkTransform)>();
 
     protected Inputs inputs;
     protected PlayerMovementController playerMovementController;
     protected PlayerHealthController playerHealthController;
     protected PlayerSkillsController playerSkillsController;
     protected SkinContoller skinContoller;
+    protected ClientNetworkTransform playerNetworkTransform;
 
     public virtual string projectilePrefabKey { get; }
 
@@ -41,8 +43,21 @@ public abstract class MaterialSkills : NetworkBehaviour
 
     public virtual float rangeAttackCooldown { get; }
 
-    [HideInInspector] public bool disablingPlayerMoveDuringMovementSkill = false;
+    public virtual float movementCooldown { get; }
+
+    public virtual float defenseCooldown { get; }
+
+    public virtual float specialCooldown { get; }
+
+    [HideInInspector] public float lastMeleeAttackTime = 0.0f;
+    [HideInInspector] public float lastRangeAttackTime = 0.0f;
+    [HideInInspector] public float lastMovementTime = 0.0f;
+    [HideInInspector] public float lastDefenseTime = 0.0f;
+    [HideInInspector] public float lastSpecialTime = 0.0f;
+
+    [HideInInspector] public bool disablingPlayerMove = false;
     [HideInInspector] public bool disablingPlayerShootingDuringMovementSkill = false;
+    [HideInInspector] public bool disablingPlayerJumpAndGravity = false;
 
     protected Dictionary<string, GameObject> projectilePrefabs;
 
@@ -73,7 +88,8 @@ public abstract class MaterialSkills : NetworkBehaviour
                 player.GetComponent<PlayerMovementController>(),
                 player.GetComponent<PlayerHealthController>(),
                 player.GetComponent<PlayerSkillsController>(),
-                player.GetComponent<SkinContoller>()
+                player.GetComponent<SkinContoller>(),
+                player.GetComponent<ClientNetworkTransform>()
             );
 
             playerComponents[player] = components;
@@ -84,5 +100,6 @@ public abstract class MaterialSkills : NetworkBehaviour
         playerHealthController = components.health;
         playerSkillsController = components.skills;
         skinContoller = components.skin;
+        playerNetworkTransform = components.networkTransform;
     }
 }

@@ -1,10 +1,14 @@
 using Unity.Netcode;
 using UnityEngine;
 
-public class Basic : MaterialSkills
+public class Basic : MaterialSkills, ISkinMaterialChanger
 {
     public override float meleeAttackCooldown { get; } = 0.5f;
     public override float rangeAttackCooldown { get; } = 0.5f;
+    public override float movementCooldown { get; } = 0f;
+    public override float defenseCooldown { get; } = 0f;
+    public override float specialCooldown { get; } = 5f;
+
     public override string projectilePrefabKey { get; } = ProjectileMapper.GetProjectileKey(ProjectileType.Basic);
 
     private GameObject bulletPrefab;
@@ -33,7 +37,16 @@ public class Basic : MaterialSkills
             disableDefenseDuringOtherSkills();
         }
 
-        animator.SetTrigger("Attack");
+        Collider[] hitColliders = Physics.OverlapSphere(playerSkillsController.basicMeleePointPosition.position, 0.5f, LayerMask.GetMask("Player"));
+
+        foreach (Collider collider in hitColliders)
+        {
+            NetworkObject playerNetworkObject = collider.gameObject.GetComponent<NetworkObject>();
+            if (playerNetworkObject != null && playerNetworkObject.OwnerClientId != ownerId)
+            {
+                playerSkillsController.enemyHealthController.takeDamage(10);
+            }
+        }
     }
 
     public override void rangeAttack(RaycastHit raycastHit)
@@ -43,7 +56,7 @@ public class Basic : MaterialSkills
             disableDefenseDuringOtherSkills();
         }
 
-        if (IsClient && !IsServer)
+        if (!IsServer)
         {
             spawnProjectileLocal(raycastHit.point, playerSkillsController.projectileSpawnPoint.position);
         }
@@ -118,20 +131,44 @@ public class Basic : MaterialSkills
 
             sprintStatus = !sprintStatus;
 
-            if (sprintStatus)
+            if (IsServer)
             {
-                playerMovementController.currentMoveSpeed = playerMovementController.movementStats.moveSpeed * 2;
+                if (sprintStatus)
+                {
+                    playerMovementController.currentMovementStats.moveSpeed.Value = playerMovementController.baseMovementStats.moveSpeed * 2;
+                }
+                else
+                {
+                    playerMovementController.currentMovementStats.moveSpeed.Value = playerMovementController.baseMovementStats.moveSpeed;
+                }
             }
             else
             {
-                playerMovementController.currentMoveSpeed = playerMovementController.movementStats.moveSpeed;
+                if (sprintStatus)
+                {
+                    playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed * 2;
+                }
+                else
+                {
+                    playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed;
+                }
+
+                switchingSprintStatusRpc(sprintStatus);
             }
         }
+    }
 
-        /*if (canRoll && playerMovementController.grounded)
+    [Rpc(SendTo.Server)]
+    private void switchingSprintStatusRpc(bool sprintStatus)
+    {
+        if (sprintStatus)
         {
-            StartCoroutine(roll());
-        }*/
+            playerSkillsController.enemyMovementController.currentMovementStats.moveSpeed.Value = playerSkillsController.enemyMovementController.baseMovementStats.moveSpeed * 2;
+        }
+        else
+        {
+            playerSkillsController.enemyMovementController.currentMovementStats.moveSpeed.Value = playerSkillsController.enemyMovementController.baseMovementStats.moveSpeed;
+        }
     }
 
     public override void defense()
@@ -156,9 +193,10 @@ public class Basic : MaterialSkills
 
         foreach (var hitCollider in hitColliders)
         {
+            NetworkObject playerNetworkObject = hitCollider.gameObject.GetComponent<NetworkObject>();
             SkinContoller hitColliderSkin = hitCollider.gameObject.GetComponent<SkinContoller>();
 
-            if (hitColliderSkin != null)
+            if (hitColliderSkin != null && playerNetworkObject != null && playerNetworkObject.OwnerClientId != ownerId)
             {
                 if (hitColliderSkin.skinMaterialNetworkVar.Value.TryGet(out NetworkObject networkObject))
                 {
@@ -170,12 +208,11 @@ public class Basic : MaterialSkills
 
     public override void passive()
     {
-        // Displays enemy material
-        if (playerSkillsController.getEnemy() != null)
+        if (playerSkillsController.enemy != null)
         {
             if (enemySkinController == null)
             {
-                enemySkinController = playerSkillsController.getEnemy().GetComponent<SkinContoller>();
+                enemySkinController = playerSkillsController.enemy.GetComponent<SkinContoller>();
             }
 
             if (enemySkinController.skinMaterialNetworkVar.Value.TryGet(out NetworkObject networkObject))
@@ -188,19 +225,74 @@ public class Basic : MaterialSkills
 
     private void enableDefense()
     {
-        playerMovementController.currentMoveSpeed = playerMovementController.movementStats.moveSpeed / 2;
+        if (IsServer)
+        {
+            playerMovementController.currentMovementStats.moveSpeed.Value = playerMovementController.baseMovementStats.moveSpeed / 2;
+        }
+        else
+        {
+            playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed / 2;
+            enableDefenseRpc();
+        }
+
         playerHealthController.enableResistance(0.2f);
     }
 
     private void disableDefense()
     {
-        playerMovementController.currentMoveSpeed = playerMovementController.movementStats.moveSpeed;
+        if (IsServer)
+        {
+            playerMovementController.currentMovementStats.moveSpeed.Value = playerMovementController.baseMovementStats.moveSpeed;
+        }
+        else
+        {
+            playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed;
+            disableDefenseRpc();
+        }
+
         playerHealthController.disableResistance();
+    }
+
+    [Rpc(SendTo.Server)]
+    private void enableDefenseRpc()
+    {
+        playerSkillsController.enemyMovementController.currentMovementStats.moveSpeed.Value = playerSkillsController.enemyMovementController.baseMovementStats.moveSpeed / 2;
+    }
+
+    [Rpc(SendTo.Server)]
+    private void disableDefenseRpc()
+    {
+        playerSkillsController.enemyMovementController.currentMovementStats.moveSpeed.Value = playerSkillsController.enemyMovementController.baseMovementStats.moveSpeed;
     }
 
     private void disableDefenseDuringOtherSkills()
     {
         inBlock = false;
         disableDefense();
+    }
+
+    public void ChangeSkinAction()
+    {
+        if (sprintStatus)
+        {
+            sprintStatus = false;
+
+            if (IsServer)
+            {
+                playerMovementController.currentMovementStats.moveSpeed.Value = playerMovementController.baseMovementStats.moveSpeed;
+            }
+            else
+            {
+                playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed;
+
+                disableSprintRpc();
+            }
+        }
+    }
+
+    [Rpc(SendTo.Server)]
+    private void disableSprintRpc()
+    {
+        playerSkillsController.enemyMovementController.currentMovementStats.moveSpeed.Value = playerSkillsController.enemyMovementController.baseMovementStats.moveSpeed;
     }
 }

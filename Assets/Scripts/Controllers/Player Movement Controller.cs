@@ -6,21 +6,13 @@ using TMPro;
 using System.Collections;
 using Unity.VisualScripting;
 
-public enum State
-{
-    Normal,
-    Plant_Movement
-}
-
 [RequireComponent(typeof(CharacterController))]
 [RequireComponent(typeof(PlayerInput))]
-
 public class PlayerMovementController : NetworkBehaviour
 {
     [Header("Player")]
-    public MovementStats movementStats;
+    public MovementStatsNetwork currentMovementStats;
 
-    //public float moveSpeed = 5.0f;
     [HideInInspector] public float currentMoveSpeed;
 
     [Range(0.0f, 0.3f)]
@@ -29,14 +21,17 @@ public class PlayerMovementController : NetworkBehaviour
     public float speedChangeRate = 10.0f;
 
     [Space(20)]
-    //public float jumpHeight = 1.2f;
-
     public float gravity = -15f;
 
     public float fallTimeout = 0.15f;
 
     [Space(20)]
-    //public float mouseSensitivity = 2.0f;
+    [Header("Stats")]
+    /*public float moveSpeed;
+    public float jumpHeight;
+    public float mouseSensitivity;*/
+    public MovementStatsLocal baseMovementStats;
+    public bool isSwitchToNetworkSpeed = false;
 
     [Space(20)]
     [Header("Player Grounded")]
@@ -85,6 +80,8 @@ public class PlayerMovementController : NetworkBehaviour
     private SkinContoller skinContoller;
     private BoxCollider boxCollider;
 
+    [HideInInspector] public StatusEffectsController<MovementStatsNetwork, MovementStatsLocal> statusEffectsController;
+
     //private bool rotateOnMove = true;
     //private bool isMovementDisabled = false;
 
@@ -112,6 +109,8 @@ public class PlayerMovementController : NetworkBehaviour
             return;
         }
 
+        setMovementStatsRpc();
+
         startCamera = GameObject.Find("Start Camera");
 
         if(startCamera != null)
@@ -127,63 +126,48 @@ public class PlayerMovementController : NetworkBehaviour
 
         playerInput = GetComponent<PlayerInput>();
         controller = GetComponent<CharacterController>();
-        boxCollider = GetComponent<BoxCollider>();
         inputs = GetComponent<Inputs>();
         skinContoller = GetComponent<SkinContoller>();
 
-        if (controller != null && boxCollider != null)
-        {
-            Physics.IgnoreCollision(controller, boxCollider);
-        }
-
-        currentMoveSpeed = movementStats.moveSpeed;
+        currentMoveSpeed = baseMovementStats.moveSpeed;
 
         fallTimeoutDelta = fallTimeout;
+    }
+
+    [Rpc(SendTo.Server)]
+    private void setMovementStatsRpc()
+    {
+        currentMovementStats.moveSpeed.Value = baseMovementStats.moveSpeed;
+        currentMovementStats.jumpHeight.Value = baseMovementStats.jumpHeight;
+        currentMovementStats.mouseSensitivity.Value = baseMovementStats.mouseSensitivity;
+
+        statusEffectsController = new StatusEffectsController<MovementStatsNetwork, MovementStatsLocal>(currentMovementStats, baseMovementStats);
     }
 
     private void FixedUpdate()
     {
         if (!IsOwner)
-            return; 
+            return;
 
-        //Debug.Log(characterVelocityMomentum);
-
-        //ApplyMomentum();
-
-        JumpAndGravity();
+        if (!skinContoller.skills.disablingPlayerJumpAndGravity)
+        {
+            JumpAndGravity();
+        }
     }
-
-    /*private void ApplyMomentum()
-    {
-        if (test)
-        {
-            characterVelocity += characterVelocityMomentum * Time.fixedDeltaTime;
-        }
-
-        if (characterVelocityMomentum.magnitude >= 0f)
-        {
-            characterVelocityMomentum -= characterVelocityMomentum * momentumDrag * Time.fixedDeltaTime;
-
-            if (characterVelocityMomentum.magnitude < 0.01f)
-            {
-                test = false;
-                characterVelocityMomentum = Vector3.zero;
-            }
-        }
-    }*/
-
 
     private void Update()
     {
         if (!IsOwner)
             return;
 
-        if (!skinContoller.skills.disablingPlayerMoveDuringMovementSkill)
+        if (!skinContoller.skills.disablingPlayerMove && !currentMovementStats.isStuned.Value)
         {
             Move();
         }
 
-        GroundedCheck();
+        //Debug.Log(currentMovementStats.moveSpeed.Value);
+
+        GroundedCheck(); 
     }
 
     private void LateUpdate()
@@ -217,8 +201,8 @@ public class PlayerMovementController : NetworkBehaviour
         if (inputs.look.sqrMagnitude >= threshold)
         {
             float deltaTimeMultiplier = isCurrentDeviceMouse ? 1.0f : Time.deltaTime;
-            cinemachineTargetYaw += inputs.look.x * deltaTimeMultiplier * movementStats.mouseSensitivity;
-            cinemachineTargetPitch += inputs.look.y * deltaTimeMultiplier * movementStats.mouseSensitivity;
+            cinemachineTargetYaw += inputs.look.x * deltaTimeMultiplier * currentMovementStats.mouseSensitivity.Value;
+            cinemachineTargetPitch += inputs.look.y * deltaTimeMultiplier * currentMovementStats.mouseSensitivity.Value;
         }
 
         cinemachineTargetYaw = ClampAngle(cinemachineTargetYaw, float.MinValue, float.MaxValue);
@@ -229,7 +213,17 @@ public class PlayerMovementController : NetworkBehaviour
 
     private void Move()
     {
-        float targetSpeed = currentMoveSpeed;
+        float targetSpeed;
+
+        if (IsServer)
+        {
+            targetSpeed = currentMovementStats.moveSpeed.Value;
+        }
+        else
+        {
+            targetSpeed = currentMoveSpeed;
+        }
+        
 
         if (inputs.move == Vector2.zero)
         {
@@ -289,14 +283,14 @@ public class PlayerMovementController : NetworkBehaviour
                 verticalVelocity = -2f;
             }
 
-            if (inputs.jump)
+            if (inputs.jump && !currentMovementStats.isStuned.Value)
             {
-                verticalVelocity = Mathf.Sqrt(movementStats.jumpHeight * -2f * gravity);
+                verticalVelocity = Mathf.Sqrt(currentMovementStats.jumpHeight.Value * -2f * gravity);
             }
         }
         else
         {
-            if (!skinContoller.skills.disablingPlayerMoveDuringMovementSkill)
+            if (!skinContoller.skills.disablingPlayerMove)
             {
                 inputs.jump = false;
             }

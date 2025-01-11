@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Netcode;
 using UnityEngine;
 
-public class AbstractState : MonoBehaviour
+public class AbstractState : NetworkBehaviour
 {
     [SerializeField] private AbstractTransition[] transitions;
 

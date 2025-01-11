@@ -1,14 +1,19 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Unity.Netcode;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
+public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
 {
+    public override float meleeAttackCooldown { get; } = 0.5f;
     public override float rangeAttackCooldown { get; } = 0.2f;
+    public override float movementCooldown { get; } = 3f;
+    public override float defenseCooldown { get; } = 10f;
+    public override float specialCooldown { get; } = 1f;
 
     public override string projectilePrefabKey { get; } = ProjectileMapper.GetProjectileKey(ProjectileType.Plant);
 
@@ -23,11 +28,11 @@ public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
 
     private bool isRunningPassiveCoroutine = false;
 
-    [HideInInspector] public float retaliateEffectDuration = 5f;
-    [HideInInspector] public float retaliateCooldownTime = 3f;
+    private float retaliateEffectDuration = 4f;
+    //[HideInInspector] public float retaliateCooldownTime = 3f;
 
     private bool isRetaliateEffectActive = false;
-    private bool isRetaliateOnCooldown = false;
+    //private bool isRetaliateOnCooldown = false;
 
     private Vector3 hookshotPosition;
     private float hookshotSpeed = 20f;
@@ -77,16 +82,19 @@ public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
     {
         Collider[] hitColliders = Physics.OverlapSphere(player.transform.position, 5f, LayerMask.GetMask("Player"));
 
-        if(hitColliders.Length > 0)
+        foreach (Collider collider in hitColliders)
         {
-            Debug.Log("Test");
-            playerSkillsController.getEnemyHealthController().takeDamage(10);
+            NetworkObject playerNetworkObject = collider.gameObject.GetComponent<NetworkObject>();
+            if (playerNetworkObject != null && playerNetworkObject.OwnerClientId != ownerId)
+            {
+                playerSkillsController.enemyHealthController.takeDamage(10);
+            }
         }
     }
 
     public override void rangeAttack(RaycastHit raycastHit)
     {
-        if (IsClient && !IsServer)
+        if (!IsServer)
         {
             spawnProjectileLocal(raycastHit.point, playerSkillsController.projectileSpawnPoint.position);
         }
@@ -95,7 +103,7 @@ public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
 
         if (raycastHit.collider.gameObject.CompareTag("Player"))
         {
-            playerSkillsController.getEnemyHealthController().takeDamage(10f);
+            playerSkillsController.enemyHealthController.takeDamage(10f);
         }
     }
 
@@ -140,8 +148,6 @@ public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
                 }
             }
         }));
-
-
     }
 
     private IEnumerator trailMovement(GameObject trail, Vector3 hitPoint, Action onComplete)
@@ -202,7 +208,7 @@ public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
 
     public override void movement()
     {
-        if (!disablingPlayerMoveDuringMovementSkill)
+        if (!disablingPlayerMove)
         {
             handleHookshotStart();
         }
@@ -215,7 +221,7 @@ public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
             playerHealthController.OnDamageTaken += HandleDamageTaken;
         }
 
-        if (!isRetaliateEffectActive && !isRetaliateOnCooldown)
+        if (!isRetaliateEffectActive)
         {
             StartCoroutine(ActivateRetaliateEffect());
         }
@@ -223,12 +229,12 @@ public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
 
     public override void special() 
     {
-        if (IsClient && !IsServer)
+        if (!IsServer)
         {
             spawnSummonedEntityLocal(playerSkillsController.summonedEntitySpawnPoint.position);
         }
 
-        spawnSummonedEntityeServerRpc(playerSkillsController.summonedEntitySpawnPoint.position, ownerId);
+        spawnSummonedEntityServerRpc(playerSkillsController.summonedEntitySpawnPoint.position, ownerId);
     }
 
     private void spawnSummonedEntityLocal(Vector3 summonedEntitySpawnPoint)
@@ -251,7 +257,7 @@ public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
     }
 
     [Rpc(SendTo.Server)]
-    private void spawnSummonedEntityeServerRpc(Vector3 summonedEntitySpawnPoint, ulong ownerId)
+    private void spawnSummonedEntityServerRpc(Vector3 summonedEntitySpawnPoint, ulong ownerId)
     {
         NetworkObject summonedEntityNetwork = NetworkObjectPool.Singleton.GetNetworkObject(summonedPlant, summonedEntitySpawnPoint);
         summonedEntityNetwork.Spawn();
@@ -278,25 +284,16 @@ public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
                 }
             }
         });
-        /*StartCoroutine(trailMovement(projectile, raycastPoint, () =>
-        {
-            if (IsServer)
-            {
-                if (projectile.IsSpawned)
-                {
-                    projectile.Despawn();
-                }
-            }
-        }));*/
-
-
     }
 
     public override void passive() 
     {
-        if (!isRunningPassiveCoroutine)
+        if (playerHealthController.currentHp.Value < playerHealthController.healthStats.maxHp)
         {
-            StartCoroutine(RegenerationCoroutine());
+            if (!isRunningPassiveCoroutine) 
+            {
+                StartCoroutine(regenerationCoroutine(1f));
+            }
         }
 
         wallCheck();
@@ -347,7 +344,7 @@ public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
     private void startClimbing()
     {
         climbing = true;
-        disablingPlayerMoveDuringMovementSkill = true;
+        disablingPlayerMove = true;
 
         lastWall = frontBotWallHit.transform;
         lastWallNormal = frontBotWallHit.normal;
@@ -361,7 +358,7 @@ public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
     private void stopClimbing()
     {
         climbing = false;
-        disablingPlayerMoveDuringMovementSkill = false;
+        disablingPlayerMove = false;
         /*if (exitWallTimer <= 0)
         {
             disablingPlayerMoveDuringMovementSkill = false;
@@ -410,31 +407,31 @@ public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
 
         isRetaliateEffectActive = false;
 
-        StartCoroutine(RetaliateCooldown());
+        /*StartCoroutine(RetaliateCooldown());*/
     }
 
-    private IEnumerator RetaliateCooldown()
+    /*private IEnumerator RetaliateCooldown()
     {
         isRetaliateOnCooldown = true;
 
         yield return new WaitForSeconds(retaliateCooldownTime);
 
         isRetaliateOnCooldown = false;
-    }
+    }*/
 
     private void HandleDamageTaken(float damage)
     {
         if (isRetaliateEffectActive)
         {
-            playerSkillsController.getEnemyHealthController().takeDamageByRetaliate(damage + (damage * 0.1f));
+            playerSkillsController.enemyHealthController.takeDamageByRetaliate(damage + (damage * 0.1f));
         }
     }
 
-    private IEnumerator RegenerationCoroutine()
+    private IEnumerator regenerationCoroutine(float regenerationNumber)
     {
         isRunningPassiveCoroutine = true;
 
-        playerHealthController.regeneration(1f);
+        playerHealthController.regeneration(regenerationNumber);
         yield return new WaitForSeconds(.1f);
 
         isRunningPassiveCoroutine = false;
@@ -463,7 +460,7 @@ public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
         if(hookshotSize >= Vector3.Distance(playerMovementController.transform.position, hookshotPosition))
         {
             throwing = false;
-            disablingPlayerMoveDuringMovementSkill = true;
+            disablingPlayerMove = true;
             isHookshotMoving = true;
         }
     }
@@ -492,23 +489,18 @@ public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
         {
             stopHookshot();
         }
-
-        if(inputs.jump)
-        {
-            handleJump();
-        }
     }
 
     private void stopHookshot()
     {
-        disablingPlayerMoveDuringMovementSkill = false;
+        disablingPlayerMove = false;
         isHookshotMoving = false;
         playerMovementController.resetGravityEffect();
 
         playerSkillsController.hookshotTransform.gameObject.SetActive(false);
     }
 
-    private void handleJump()
+    /*private void handleJump()
     {
         float speedMultiplier = 0.1f;
         playerMovementController.characterVelocityMomentum = hookshotDir * speedMultiplier;
@@ -518,7 +510,7 @@ public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
 
         stopHookshot();
     }
-
+*/
     public void HandleUpdate()
     {
         if (isHookshotMoving)
@@ -531,18 +523,18 @@ public class Plant : MaterialSkills, IFixedUpdateHandler, IUpdateHandler
         }
     }
 
-    public void HandleFixedUpdate()
+    public void ChangeSkinAction()
     {
-        /*playerMovementController.characterVelocity += playerMovementController.characterVelocityMomentum;
-
-        if (playerMovementController.characterVelocityMomentum.magnitude >= 0f)
+        if (isRetaliateEffectActive)
         {
-            playerMovementController.characterVelocityMomentum -= playerMovementController.characterVelocityMomentum * playerMovementController.momentumDrag * Time.deltaTime;
-            if (playerMovementController.characterVelocityMomentum.magnitude < 0.0f)
-            {
-                playerMovementController.characterVelocityMomentum = Vector3.zero;
-            }
-        }*/
+            Debug.Log("Test");
+            StopCoroutine(ActivateRetaliateEffect());
+            isRetaliateEffectActive = false;
+        }
 
+        if (throwing)
+        {
+            stopHookshot();
+        }
     }
 }

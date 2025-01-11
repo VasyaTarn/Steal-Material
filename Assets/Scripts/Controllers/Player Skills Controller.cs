@@ -1,18 +1,19 @@
 using Cinemachine;
 using UnityEngine;
 using Unity.Netcode;
-using Zenject;
 
 public class PlayerSkillsController : NetworkBehaviour
 {
     private SkinContoller skin;
     private PlayerMovementController playerMovementController;
     private Inputs inputs;
-    private float lastMeleeAttackTime = 0.0f;
+    /*private float lastMeleeAttackTime = 0.0f;
     private float lastRangeAttackTime = 0.0f;
-
-    private GameObject enemy;
-    private PlayerHealthController enemyHealthController;
+    private float lastMovementTime = 0.0f;*/
+    public GameObject enemy { get; private set; }
+    public PlayerHealthController enemyHealthController { get; private set; }
+    public PlayerMovementController enemyMovementController { get; private set; }
+    public PlayerSkillsController enemySkillsController { get; private set; }
 
     [Header("Aim")]
     [SerializeField] private CinemachineVirtualCamera aimVirtualCamera;
@@ -22,11 +23,20 @@ public class PlayerSkillsController : NetworkBehaviour
     [Header("Range Attack")]
     public Transform projectileSpawnPoint;
 
+    [Header("Player Objects")]
+    public GameObject model;
+
     [Header("Plant Objects")]
     public Transform hookshotTransform;
     public Transform summonedEntitySpawnPoint;
 
+    [Header("Basic Objects")]
+    public Transform basicMeleePointPosition;
     //private Transform debugRay;
+
+    [Header("Stone Objects")]
+    public Transform stoneMeleePointPosition;
+    public Transform stoneDefensePointPosition;
 
     private void Awake()
     {
@@ -71,72 +81,50 @@ public class PlayerSkillsController : NetworkBehaviour
 
         skin.skills.passive();
 
-        if (skin.skinMaterial != null && inputs.meleeAttack && Time.time >= lastMeleeAttackTime + skin.skills.meleeAttackCooldown)
+        if (skin.skinMaterial != null && inputs.meleeAttack && Time.time >= skin.skills.lastMeleeAttackTime + skin.skills.meleeAttackCooldown && !playerMovementController.currentMovementStats.isStuned.Value)
         {
             skin.skills.meleeAttack();
-            lastMeleeAttackTime = Time.time;
+            skin.skills.lastMeleeAttackTime = Time.time;
         }
-
-        /*Vector2 screenCenterPoint = new Vector2(Screen.width / 2f, Screen.height / 2f);
-        Ray ray = Camera.main.ScreenPointToRay(screenCenterPoint);
-        RaycastHit raycastHit;
-        if (Physics.Raycast(ray, out raycastHit, Mathf.Infinity, aimCollaiderLayerMask))
-        {
-            
-        }*/
 
 
         if (inputs.aim)
         {
             aimVirtualCamera.gameObject.SetActive(true);
-            //playerMovementController.setRotateOnMove(false);
-
-            /*if(!skin.skills.disablingPlayerMoveDuringMovementSkill)
-            {
-                aimRotation();
-            }*/
         }
         else
         {
             aimVirtualCamera.gameObject.SetActive(false);
-           // playerMovementController.setRotateOnMove(true);
         }
-
-        /*if (inputs.shoot && projectileSpawnPoint != null && !skin.skills.disablingPlayerShootingDuringMovementSkill)
-        {
-            aimRotation();
-            playerMovementController.setRotateOnMove(false);
-        }*/
-        /*else if (!inputs.shoot && !playerMovementController.getRotateOnMove() && !inputs.aim)
-        {
-            playerMovementController.setRotateOnMove(true);
-        }*/
 
         if(IsOwner)
         {
-            if (inputs.shoot && projectileSpawnPoint != null && Time.time >= lastRangeAttackTime + skin.skills.rangeAttackCooldown && !skin.skills.disablingPlayerShootingDuringMovementSkill)
+            if (inputs.shoot && projectileSpawnPoint != null && Time.time >= skin.skills.lastRangeAttackTime + skin.skills.rangeAttackCooldown && !skin.skills.disablingPlayerShootingDuringMovementSkill && !playerMovementController.currentMovementStats.isStuned.Value)
             {
                 if (performRaycast(out RaycastHit raycastHit))
                 {
                     skin.skills.rangeAttack(raycastHit);
-                    lastRangeAttackTime = Time.time;
+                    skin.skills.lastRangeAttackTime = Time.time;
                 }
             }
         }
 
-        if (inputs.movementSkill)
+        if (inputs.movementSkill && Time.time >= skin.skills.lastMovementTime + skin.skills.movementCooldown && !playerMovementController.currentMovementStats.isStuned.Value)
         {
             skin.skills.movement();
+            skin.skills.lastMovementTime = Time.time;
         }
 
-        if(inputs.defense)
+        if(inputs.defense && Time.time >= skin.skills.lastDefenseTime + skin.skills.defenseCooldown && !playerMovementController.currentMovementStats.isStuned.Value)
         {
             skin.skills.defense();
+            skin.skills.lastDefenseTime = Time.time;
         }
         
-        if(inputs.special)
+        if(inputs.special && Time.time >= skin.skills.lastSpecialTime + skin.skills.specialCooldown && !playerMovementController.currentMovementStats.isStuned.Value)
         {
             skin.skills.special();
+            skin.skills.lastSpecialTime = Time.time;
         }
 
         if (skin.skills is IUpdateHandler updateHandler)
@@ -145,22 +133,12 @@ public class PlayerSkillsController : NetworkBehaviour
         }
     }
 
-    /*private Vector3 worldAimTarget;
-    private Vector3 aimDirection;
-
-    private void aimRotation()
-    {
-        worldAimTarget = raycastPointPosition;
-        worldAimTarget.y = transform.position.y;
-        aimDirection = (worldAimTarget - transform.position).normalized;
-
-        transform.forward = Vector3.Lerp(transform.forward, aimDirection, Time.deltaTime * 30f);
-    }*/
-
     public void setEnemy(GameObject enemy)
     {
         this.enemy = enemy;
         enemyHealthController = enemy.GetComponent<PlayerHealthController>();
+        enemyMovementController = enemy.GetComponent<PlayerMovementController>();
+        enemySkillsController = enemy.GetComponent<PlayerSkillsController>();
     }
 
     private bool performRaycast(out RaycastHit raycastHit)
@@ -169,15 +147,5 @@ public class PlayerSkillsController : NetworkBehaviour
         Ray ray = Camera.main.ScreenPointToRay(screenCenterPoint);
 
         return Physics.Raycast(ray, out raycastHit, Mathf.Infinity, aimCollaiderLayerMask);
-    }
-
-    public GameObject getEnemy()
-    {
-        return enemy;
-    }
-
-    public PlayerHealthController getEnemyHealthController()
-    {
-        return enemyHealthController;
     }
 }

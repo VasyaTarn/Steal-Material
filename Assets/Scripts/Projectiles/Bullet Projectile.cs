@@ -4,8 +4,13 @@ using System;
 
 public abstract class BulletProjectile : NetworkBehaviour
 {
-    public float speed;
+    [SerializeField] protected float speed;
+    [SerializeField] protected float damage;
+
+
     protected bool isNetworkObject = false;
+    protected Action onReleaseCallback;
+    protected ulong ownerId;
 
     public override void OnNetworkSpawn()
     {
@@ -14,7 +19,10 @@ public abstract class BulletProjectile : NetworkBehaviour
 
     public virtual void movement(Vector3 direction, Action releaseCallback) {}
 
-    protected virtual void onTrigger(Collision target) {}
+    protected virtual void onTrigger(Collider target) {}
 
-
+    public void setOwnerId(ulong ownerId) 
+    {
+        this.ownerId = ownerId;
+    }
 }

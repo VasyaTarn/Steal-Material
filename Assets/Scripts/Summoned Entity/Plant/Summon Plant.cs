@@ -1,18 +1,39 @@
+using System.Collections;
+using System.Collections.Generic;
+using Unity.Netcode;
 using UnityEngine;
 
-public class SummonPlant : SummonedEntity
+public class SummonPlant : SummonedEntity, IAttackable
 {
     private void Update()
     {
-        if(Vector3.Distance(transform.position, owner.getEnemy().transform.position) < 5f)
+        if (IsClient && !IsServer)
         {
-            attack(20f);
+            if (!isNetworkObject)
+            {
+                if (Vector3.Distance(transform.position, owner.enemy.transform.position) < 5f)
+                {
+                    attack(20f);
+                }
+            }
+        }
+        else
+        {
+            if (Vector3.Distance(transform.position, owner.enemy.transform.position) < 5f)
+            {
+                attack(20f);
+            }
         }
     }
 
-    protected override void attack(float damage)
+    public void attack(float damage)
     {
-        owner.getEnemyHealthController().takeDamage(damage);
+        if (isNetworkObject)
+        {
+            owner.enemyHealthController.takeDamage(damage);
+            owner.enemyMovementController.statusEffectsController.addBuff(new Slowdown(0.5f, 2f));
+        }
+
         onDeathCallback?.Invoke();
     }
 }

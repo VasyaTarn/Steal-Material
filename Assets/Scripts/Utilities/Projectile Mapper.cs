@@ -5,7 +5,8 @@ public enum ProjectileType
 {
     Basic,
     Fire,
-    Plant
+    Plant,
+    Stone
 }
 
 public class ProjectileMapper
@@ -13,8 +14,9 @@ public class ProjectileMapper
     private static readonly Dictionary<ProjectileType, string> ProjectileKeys = new()
     {
         { ProjectileType.Basic, "Basic_range" },
-        { ProjectileType.Fire, "Fire Projectile" },
+        { ProjectileType.Fire, "Fire_range" },
         { ProjectileType.Plant, "Plant_range" },
+        { ProjectileType.Stone, "Stone_range" },
     };
 
     public static string GetProjectileKey(ProjectileType type)

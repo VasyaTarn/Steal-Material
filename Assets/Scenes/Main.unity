@@ -1070,8 +1070,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animator: {fileID: 0}
   _player: {fileID: 0}
-  disablingPlayerMoveDuringMovementSkill: 0
+  lastMeleeAttackTime: 0
+  lastRangeAttackTime: 0
+  lastMovementTime: 0
+  lastDefenseTime: 0
+  lastSpecialTime: 0
+  disablingPlayerMove: 0
   disablingPlayerShootingDuringMovementSkill: 0
+  disablingPlayerJumpAndGravity: 0
 --- !u!114 &343823460
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1790,6 +1796,18 @@ MonoBehaviour:
     prewarmCount: 5
   - prefab: {fileID: 415041004747596300, guid: 14b7b9b315aa3ae419f50b394af7f7e2, type: 3}
     prewarmCount: 5
+  - prefab: {fileID: 2808902707497836965, guid: 5937f4378509e804c8e93d4ce3dd14b5,
+      type: 3}
+    prewarmCount: 5
+  - prefab: {fileID: 7605236327759577966, guid: 95ea296fc74f5bd40970c1be5fb5225e,
+      type: 3}
+    prewarmCount: 5
+  - prefab: {fileID: 8884721813178739368, guid: 433d6a8b94a1ae94d8d443de5e59a787,
+      type: 3}
+    prewarmCount: 5
+  - prefab: {fileID: 7018480729619590804, guid: ed4833f75f73bd94d8bb53d8ca86a938,
+      type: 3}
+    prewarmCount: 1
 --- !u!4 &661295495
 Transform:
   m_ObjectHideFlags: 0
@@ -1894,10 +1912,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animator: {fileID: 0}
   _player: {fileID: 0}
-  disablingPlayerMoveDuringMovementSkill: 0
+  lastMeleeAttackTime: 0
+  lastRangeAttackTime: 0
+  lastMovementTime: 0
+  lastDefenseTime: 0
+  lastSpecialTime: 0
+  disablingPlayerMove: 0
   disablingPlayerShootingDuringMovementSkill: 0
-  retaliateEffectDuration: 5
-  retaliateCooldownTime: 3
+  disablingPlayerJumpAndGravity: 0
 --- !u!114 &722695658
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3454,6 +3476,12 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1070221423}
   m_CullTransparentMesh: 1
+--- !u!1 &1093600883 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6028172152617343990, guid: 68457de63e92e9b41b00f2d3aee5f43f,
+    type: 3}
+  m_PrefabInstance: {fileID: 8730228459186067060}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1152382599
 GameObject:
   m_ObjectHideFlags: 0
@@ -4014,8 +4042,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animator: {fileID: 0}
   _player: {fileID: 0}
-  disablingPlayerMoveDuringMovementSkill: 0
+  lastMeleeAttackTime: 0
+  lastRangeAttackTime: 0
+  lastMovementTime: 0
+  lastDefenseTime: 0
+  lastSpecialTime: 0
+  disablingPlayerMove: 0
   disablingPlayerShootingDuringMovementSkill: 0
+  disablingPlayerJumpAndGravity: 0
 --- !u!114 &1456330269
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4644,12 +4678,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Padding: {x: -8, y: -5, z: -8, w: -5}
   m_Softness: {x: 0, y: 0}
---- !u!1 &1720356822 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 6028172152617343990, guid: 68457de63e92e9b41b00f2d3aee5f43f,
-    type: 3}
-  m_PrefabInstance: {fileID: 8730228459186067060}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1797094308
 GameObject:
   m_ObjectHideFlags: 0
@@ -4694,7 +4722,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bdc5bd047ec2e6d41a84afb4457b21a5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  starterMaterial: {fileID: 1720356822}
+  starterMaterial: {fileID: 1093600883}
 --- !u!1 &1853295928
 GameObject:
   m_ObjectHideFlags: 0
@@ -4909,8 +4937,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animator: {fileID: 0}
   _player: {fileID: 0}
-  disablingPlayerMoveDuringMovementSkill: 0
+  lastMeleeAttackTime: 0
+  lastRangeAttackTime: 0
+  lastMovementTime: 0
+  lastDefenseTime: 0
+  lastSpecialTime: 0
+  disablingPlayerMove: 0
   disablingPlayerShootingDuringMovementSkill: 0
+  disablingPlayerJumpAndGravity: 0
 --- !u!114 &1881974246
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5025,7 +5059,7 @@ Transform:
   m_GameObject: {fileID: 1881974244}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -4.71, y: 2.05, z: 4.897903}
+  m_LocalPosition: {x: -4.75, y: 2.05, z: 4.98}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

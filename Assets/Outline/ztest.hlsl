@@ -1,0 +1,4 @@
+void SetZTest()
+{
+    ZTest Always;
+}

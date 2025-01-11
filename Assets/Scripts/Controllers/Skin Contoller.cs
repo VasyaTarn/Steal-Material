@@ -10,9 +10,10 @@ public class SkinContoller : NetworkBehaviour
     [HideInInspector] public MaterialSkills skills;
 
     private Inputs input;
+    private PlayerHealthController playerHealthController;
 
-    private Outline outline;
-    private Outline previousOutline;
+    private OutlineCustom outline;
+    private OutlineCustom previousOutline;
 
     private GameObject mainCamera;
 
@@ -34,6 +35,7 @@ public class SkinContoller : NetworkBehaviour
         }    
 
         input = GetComponent<Inputs>();
+        playerHealthController = GetComponent<PlayerHealthController>();
 
         changeSkin(StarterMaterialManager.Instance.GetStarterMaterial());
 
@@ -54,10 +56,17 @@ public class SkinContoller : NetworkBehaviour
             {
                 if(input.steal && (skinMaterial != hit.collider.gameObject))
                 {
+                    if(skills is ISkinMaterialChanger skin)
+                    {
+                        skin.ChangeSkinAction();
+                    }
+
                     changeSkin(hit.collider.gameObject);
                     skills.ownerId = OwnerClientId;
+                    playerHealthController.OnDamageTaken = null;
+                    
                 }
-                outline = hit.collider.GetComponent<Outline>();
+                outline = hit.collider.GetComponent<OutlineCustom>();
 
                 if (outline != null)
                 {

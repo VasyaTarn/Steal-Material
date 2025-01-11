@@ -6,11 +6,9 @@ public class BasicProjectile : BulletProjectile
 {
     private Rigidbody projectileRigidbody;
 
-    private Action onReleaseCallback;
-
-    private void OnCollisionEnter(Collision collision)
+    private void OnTriggerEnter(Collider other)
     {
-        onTrigger(collision);
+        onTrigger(other);
     }
 
     public override void movement(Vector3 direction, Action releaseCallback)
@@ -25,15 +23,16 @@ public class BasicProjectile : BulletProjectile
         projectileRigidbody.velocity = direction * speed;
     }
 
-    protected override void onTrigger(Collision target)
+    protected override void onTrigger(Collider target)
     {
+
         if (isNetworkObject && target.gameObject.CompareTag("Player"))
         {
             PlayerHealthController healthController = target.gameObject.GetComponent<PlayerHealthController>();
 
             if (healthController != null)
             {
-                healthController.takeDamage(10);
+                healthController.takeDamage(damage);
             }
         }
 
