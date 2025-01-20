@@ -7,11 +7,9 @@ using UnityEngine;
 
 public class StoneProjectile : BulletProjectile
 {
-    private Rigidbody projectileRigidbody;
-
     private void OnTriggerEnter(Collider other)
     {
-        onTrigger(other);
+        OnTrigger(other);
     }
 
     void FixedUpdate()
@@ -20,7 +18,7 @@ public class StoneProjectile : BulletProjectile
         projectileRigidbody.AddForce(customGravity, ForceMode.Acceleration);
     }
 
-    public override void movement(Vector3 direction, Action releaseCallback)
+    public override void Movement(Vector3 direction, Action releaseCallback)
     {
         if (projectileRigidbody == null)
         {
@@ -32,11 +30,10 @@ public class StoneProjectile : BulletProjectile
         projectileRigidbody.velocity = direction * speed;
     }
 
-    protected override void onTrigger(Collider target)
+    protected override void OnTrigger(Collider target)
     {
-        if (isNetworkObject && target.gameObject.CompareTag("Player"))
+        if (isNetworkObject && target.TryGetComponent(out PlayerHealthController healthController))
         {
-            PlayerHealthController healthController = target.gameObject.GetComponent<PlayerHealthController>();
             NetworkObject targetNetwork = target.gameObject.GetComponent<NetworkObject>();
             PlayerMovementController movementController = target.gameObject.GetComponent<PlayerMovementController>();
 
@@ -44,11 +41,11 @@ public class StoneProjectile : BulletProjectile
             {
                 if (!movementController.currentMovementStats.isStuned.Value)
                 {
-                    healthController.takeDamage(damage);
+                    healthController.TakeDamage(damage);
                 }
                 else
                 {
-                    healthController.takeDamage(damage * 5);
+                    healthController.TakeDamage(damage * 5);
                 }
             }
         }

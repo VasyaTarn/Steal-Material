@@ -168,7 +168,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fab5d9ac4b6944a4296159cd9b535712, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  startState: {fileID: 3195409692817435764}
+  _startState: {fileID: 3195409692817435764}
 --- !u!114 &3195409692817435764
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -181,9 +181,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 64194d57a328054419a59fbefd516601, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  transitions: []
+  _transitions: []
   summon: {fileID: 5065196012932129053}
-  agent: {fileID: 5884560863172650960}
+  _agent: {fileID: 5884560863172650960}
 --- !u!1 &8384032330961287560
 GameObject:
   m_ObjectHideFlags: 0

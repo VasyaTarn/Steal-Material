@@ -8,7 +8,8 @@ public class MovementStatsNetwork : NetworkBehaviour, IStats
     public NetworkVariable<float> mouseSensitivity = new NetworkVariable<float>(default);
     public NetworkVariable<bool> isStuned = new NetworkVariable<bool>(default);
 
-    private PlayerMovementController playerMovementController;
+    private PlayerMovementController _playerMovementController;
+
 
     private void OnEnable()
     {
@@ -22,16 +23,16 @@ public class MovementStatsNetwork : NetworkBehaviour, IStats
 
     private void Start()
     {
-        playerMovementController = GetComponent<PlayerMovementController>();
+        _playerMovementController = GetComponent<PlayerMovementController>();
     }
 
     private void OnMoveSpeedChanged(float previousValue, float newValue)
     {
         if (!IsServer)
         {
-            if (playerMovementController.currentMoveSpeed != newValue)
+            if (_playerMovementController.currentMoveSpeed != newValue)
             {
-                playerMovementController.currentMoveSpeed = newValue;
+                _playerMovementController.currentMoveSpeed = newValue;
             }
         }
     }

@@ -8,53 +8,53 @@ using System.Linq;
 public class StatusEffectsController<TCurrent, TBase> : IBuffable<TCurrent, TBase> where TCurrent : IStats where TBase : IStats
 {
     public List<IBuff<TCurrent, TBase>> buffs = new();
-    private Dictionary<IBuff<TCurrent, TBase>, float> buffTimers = new();
+    private Dictionary<IBuff<TCurrent, TBase>, float> _buffTimers = new();
 
-    private TCurrent currentStats;
-    private TBase baseStats;
+    private TCurrent _currentStats;
+    private TBase _baseStats;
 
     public StatusEffectsController(TCurrent currentStats, TBase baseStats)
     {
-        this.currentStats = currentStats;
-        this.baseStats = baseStats;
+        this._currentStats = currentStats;
+        this._baseStats = baseStats;
     }
 
-    public async void addBuff(IBuff<TCurrent, TBase> buff)
+    public async void AddBuff(IBuff<TCurrent, TBase> buff)
     {
-        var existingBuff = buffs.FirstOrDefault(b => b.isSameType(buff));
+        var existingBuff = buffs.FirstOrDefault(b => b.IsSameType(buff));
 
         if (existingBuff != null)
         {
-            buffTimers[existingBuff] = buff.duration;
+            _buffTimers[existingBuff] = buff._duration;
         }
         else
         {
             buffs.Add(buff);
-            buff.applyBuff(currentStats, baseStats);
-            buffTimers[buff] = buff.duration;
+            buff.ApplyBuff(_currentStats, _baseStats);
+            _buffTimers[buff] = buff._duration;
 
-            await startBuffDuration(buff);
+            await StartBuffDuration(buff);
         }
     }
 
-    public void removeBuff(IBuff<TCurrent, TBase> buff)
+    public void RemoveBuff(IBuff<TCurrent, TBase> buff)
     {
         buffs.Remove(buff);
 
-        buff.cancelBuff(currentStats, baseStats);
+        buff.CancelBuff(_currentStats, _baseStats);
     }
 
-    private async UniTask startBuffDuration(IBuff<TCurrent, TBase> buff)
+    private async UniTask StartBuffDuration(IBuff<TCurrent, TBase> buff)
     {
-        while (buffTimers.TryGetValue(buff, out float remainingTime) && remainingTime > 0)
+        while (_buffTimers.TryGetValue(buff, out float remainingTime) && remainingTime > 0)
         {
             await UniTask.Yield(PlayerLoopTiming.Update);
-            buffTimers[buff] -= Time.deltaTime;
+            _buffTimers[buff] -= Time.deltaTime;
         }
 
-        if (buffTimers.ContainsKey(buff))
+        if (_buffTimers.ContainsKey(buff))
         {
-            removeBuff(buff);
+            RemoveBuff(buff);
         }
     }
 }

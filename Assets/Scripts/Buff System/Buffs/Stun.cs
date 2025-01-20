@@ -4,29 +4,29 @@ using UnityEngine;
 
 public class Stun : IBuff<MovementStatsNetwork, MovementStatsLocal>
 {
-    public float duration { get; private set; }
+    public float _duration { get; private set; }
 
     public Stun(float duration)
     {
-        this.duration = duration;
+        this._duration = duration;
     }
-    public void applyBuff(MovementStatsNetwork currentStats, MovementStatsLocal baseStats)
+    public void ApplyBuff(MovementStatsNetwork currentStats, MovementStatsLocal baseStats)
     {
-        currentStats.isStuned.Value = true;
+        currentStats.isStuned.Value = !baseStats.isStuned;
     }
 
-    public void cancelBuff(MovementStatsNetwork currentStats, MovementStatsLocal baseStats)
+    public void CancelBuff(MovementStatsNetwork currentStats, MovementStatsLocal baseStats)
     {
-        currentStats.isStuned.Value = false;
+        currentStats.isStuned.Value = baseStats.isStuned;
     }
 
-    public bool isSameType(IBuff<MovementStatsNetwork, MovementStatsLocal> other)
+    public bool IsSameType(IBuff<MovementStatsNetwork, MovementStatsLocal> other)
     {
         return other is Stun;
     }
 
-    public void resetDuration(float newDuration)
+    public void ResetDuration(float newDuration)
     {
-        duration = newDuration;
+        _duration = newDuration;
     }
 }

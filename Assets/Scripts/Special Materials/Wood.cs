@@ -2,12 +2,12 @@ using UnityEngine;
 
 public class Wood : MaterialSkills
 {
-    public override void meleeAttack()
+    public override void MeleeAttack()
     {
         Debug.Log("Wood melee");
     }
 
-    public override void rangeAttack(RaycastHit raycastHit)
+    public override void RangeAttack(RaycastHit raycastHit)
     {
         Debug.Log("Wood range");
     }

@@ -1,4 +1,4 @@
 public interface IAttackable
 {
-    public void attack(float damage);
+    public void Attack(float damage);
 }

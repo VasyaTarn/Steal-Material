@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!687078895 &4343727234628468602
+SpriteAtlas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Icons
+  m_EditorData:
+    serializedVersion: 2
+    textureSettings:
+      serializedVersion: 2
+      anisoLevel: 1
+      compressionQuality: 50
+      maxTextureSize: 2048
+      textureCompression: 0
+      filterMode: 1
+      generateMipMaps: 0
+      readable: 0
+      crunchedCompression: 0
+      sRGB: 1
+    platformSettings: []
+    packingSettings:
+      serializedVersion: 2
+      padding: 4
+      blockOffset: 1
+      allowAlphaSplitting: 0
+      enableRotation: 0
+      enableTightPacking: 1
+      enableAlphaDilation: 0
+    secondaryTextureSettings: {}
+    variantMultiplier: 1
+    packables:
+    - {fileID: 2800000, guid: 6512c8bab1bb37547a1eb262c27de300, type: 3}
+    - {fileID: 2800000, guid: aefe7c5bdfcda9647b1d26d04b3bfb59, type: 3}
+    - {fileID: 2800000, guid: 1005d1c25f404b449ba255dac726c5f6, type: 3}
+    - {fileID: 2800000, guid: 44fdabe5a6ead8c488aa5470012e1f14, type: 3}
+    - {fileID: 2800000, guid: 568757d7cbd7c8c468a765f757cb5b52, type: 3}
+    bindAsDefault: 1
+    isAtlasV2: 0
+    cachedData: {fileID: 0}
+    packedSpriteRenderDataKeys:
+    - 1005d1c25f404b449ba255dac726c5f6: 21300000
+    - 44fdabe5a6ead8c488aa5470012e1f14: 21300000
+    - 568757d7cbd7c8c468a765f757cb5b52: 21300000
+    - 6512c8bab1bb37547a1eb262c27de300: 21300000
+    - aefe7c5bdfcda9647b1d26d04b3bfb59: 21300000
+  m_MasterAtlas: {fileID: 0}
+  m_PackedSprites:
+  - {fileID: 21300000, guid: 1005d1c25f404b449ba255dac726c5f6, type: 3}
+  - {fileID: 21300000, guid: 44fdabe5a6ead8c488aa5470012e1f14, type: 3}
+  - {fileID: 21300000, guid: 568757d7cbd7c8c468a765f757cb5b52, type: 3}
+  - {fileID: 21300000, guid: 6512c8bab1bb37547a1eb262c27de300, type: 3}
+  - {fileID: 21300000, guid: aefe7c5bdfcda9647b1d26d04b3bfb59, type: 3}
+  m_PackedSpriteNamesToIndex:
+  - Movement
+  - Melee
+  - Special
+  - Defense
+  - BLACKSCREEN
+  m_RenderDataMap: {}
+  m_Tag: Icons
+  m_IsVariant: 0

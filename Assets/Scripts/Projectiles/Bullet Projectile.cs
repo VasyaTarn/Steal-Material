@@ -4,6 +4,8 @@ using System;
 
 public abstract class BulletProjectile : NetworkBehaviour
 {
+    protected Rigidbody projectileRigidbody;
+
     [SerializeField] protected float speed;
     [SerializeField] protected float damage;
 
@@ -12,16 +14,21 @@ public abstract class BulletProjectile : NetworkBehaviour
     protected Action onReleaseCallback;
     protected ulong ownerId;
 
+    private void Start()
+    {
+        projectileRigidbody.collisionDetectionMode = CollisionDetectionMode.Continuous;
+    }
+
     public override void OnNetworkSpawn()
     {
         isNetworkObject = true;
     }
 
-    public virtual void movement(Vector3 direction, Action releaseCallback) {}
+    public virtual void Movement(Vector3 direction, Action releaseCallback) {}
 
-    protected virtual void onTrigger(Collider target) {}
+    protected virtual void OnTrigger(Collider target) {}
 
-    public void setOwnerId(ulong ownerId) 
+    public void SetOwnerId(ulong ownerId)
     {
         this.ownerId = ownerId;
     }

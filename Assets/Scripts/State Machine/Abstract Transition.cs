@@ -4,10 +4,11 @@ using UnityEngine;
 
 public class AbstractTransition : MonoBehaviour
 {
-    [SerializeField] private AbstractState stateToTransition;
+    [SerializeField] private AbstractState _stateToTransition;
 
-    public AbstractState StateToTransition => stateToTransition;
+    public AbstractState StateToTransition => _stateToTransition;
     public bool shouldTransition { get; set; }
+
 
     private void OnEnable()
     {

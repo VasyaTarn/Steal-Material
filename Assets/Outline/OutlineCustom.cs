@@ -5,42 +5,42 @@ using UnityEngine;
 
 public class OutlineCustom : MonoBehaviour
 {
-    private Renderer[] renderers;
+    private Renderer[] _renderers;
 
     public Material outlineMaterial;
 
-    private Material[] withOutline;
-    private Material[] withoutOutline;
+    private Material[] _withOutline;
+    private Material[] _withoutOutline;
 
     private void Awake()
     {
-        renderers = GetComponentsInChildren<Renderer>();
+        _renderers = GetComponentsInChildren<Renderer>();
 
-        foreach (var renderer in renderers)
+        foreach (var renderer in _renderers)
         {
             var materials = renderer.sharedMaterials.ToList();
 
-            withoutOutline = materials.ToArray();
+            _withoutOutline = materials.ToArray();
 
             materials.Add(outlineMaterial);
 
-            withOutline = materials.ToArray();
+            _withOutline = materials.ToArray();
         }
     }
 
-    public void enable()
+    public void Enable()
     {
-        foreach (var renderer in renderers)
+        foreach (var renderer in _renderers)
         {
-            renderer.materials = withOutline;
+            renderer.materials = _withOutline;
         }
     }
 
-    public void disable()
+    public void Disable()
     {
-        foreach (var renderer in renderers)
+        foreach (var renderer in _renderers)
         {
-            renderer.materials = withoutOutline;
+            renderer.materials = _withoutOutline;
         }
     }
 }

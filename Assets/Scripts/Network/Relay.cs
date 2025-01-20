@@ -7,18 +7,19 @@ using TMPro;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using Unity.Networking.Transport.Relay;
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
+using System.Threading.Tasks;
 
 public class Relay : MonoBehaviour
 {
-    [SerializeField] private TMP_InputField inputField;
-
-
+    [SerializeField] private TMP_InputField _inputField;
+    [SerializeField] private JoinUIView _joinUIView;
+    [SerializeField] private MenuLightController _menuLightController;
 
     private async void Start()
     {
         //NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
-
-        inputField.onEndEdit.AddListener(JoinRelay);
 
         await UnityServices.InitializeAsync();
 
@@ -34,15 +35,20 @@ public class Relay : MonoBehaviour
     {
         try
         {
-            //SceneManager.LoadScene("Main");
-
             Allocation allocation = await RelayService.Instance.CreateAllocationAsync(2);
+            _menuLightController.DisableLight();
 
             string joinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
 
 
             RelayServerData relayServerData = new RelayServerData(allocation, "dtls");
             NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(relayServerData);
+
+            await Task.Delay(1000);
+
+            SceneManager.LoadScene("Main");
+
+            await Task.Delay(100);
 
             NetworkManager.Singleton.StartHost();
 
@@ -54,36 +60,43 @@ public class Relay : MonoBehaviour
         }
     }
 
-    public async void JoinRelay(string joinCode)
+    public async void JoinRelay()
     {
-        try
+        if (!string.IsNullOrEmpty(_inputField.text))
         {
-            //SceneManager.LoadScene("Main");
+            try
+            {
+                Debug.Log("Join relay with " + _inputField.text);
+                JoinAllocation joinAllocation = await RelayService.Instance.JoinAllocationAsync(_inputField.text);
+                _menuLightController.DisableLight();
 
-            Debug.Log("Join relay with " + joinCode);
-            JoinAllocation joinAllocation = await RelayService.Instance.JoinAllocationAsync(joinCode);
+                RelayServerData relayServerData = new RelayServerData(joinAllocation, "dtls");
+                NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(relayServerData);
 
-            RelayServerData relayServerData = new RelayServerData(joinAllocation, "dtls");
-            NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(relayServerData);
+                await Task.Delay(1000);
 
-            NetworkManager.Singleton.StartClient();
+                SceneManager.LoadScene("Main");
+
+                NetworkManager.Singleton.StartClient();
+            }
+            catch (RelayServiceException e)
+            {
+                Debug.Log(e);
+                _joinUIView.DislayJoinUI();
+                _joinUIView.GetErrorText().text = "Incorrect code or internet problems";
+            }
         }
-        catch (RelayServiceException e)
+        else
         {
-            Debug.Log(e);
+            await Task.Delay(500);
+            _joinUIView.DislayJoinUI();
+            _joinUIView.GetErrorText().text = "Code field is empty";
         }
     }
 
-    /* private void OnClientConnected(ulong clientId)
-     {
-         if (clientId == NetworkManager.Singleton.LocalClientId && NetworkManager.Singleton.IsClient)
-         {
-             Debug.Log("Client connected: " + clientId);
-
-             GameObject playerObject = NetworkManager.Singleton.SpawnManager.GetPlayerNetworkObject(clientId).gameObject;
-
-             // playerObject.GetComponent<PlayerController>().Initialize(clientId);
-         }
-     }*/
+    /*private void OnClientConnected(ulong clientId)
+    {
+        Debug.Log("Test");
+    }*/
 
 }

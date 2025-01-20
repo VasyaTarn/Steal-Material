@@ -4,7 +4,7 @@ public class StarterMaterialManager : MonoBehaviour
 {
     public static StarterMaterialManager Instance { get; private set; }
 
-    [SerializeField] private GameObject starterMaterial;
+    [SerializeField] private GameObject _starterMaterial;
 
     private void Awake()
     {
@@ -20,6 +20,6 @@ public class StarterMaterialManager : MonoBehaviour
 
     public GameObject GetStarterMaterial()
     {
-        return starterMaterial;
+        return _starterMaterial;
     }
 }

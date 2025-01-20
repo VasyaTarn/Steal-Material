@@ -5,9 +5,10 @@ using UnityEngine;
 
 public class AbstractState : NetworkBehaviour
 {
-    [SerializeField] private AbstractTransition[] transitions;
+    [SerializeField] private AbstractTransition[] _transitions;
 
     [SerializeField] protected SummonedEntity summon;
+
 
     public virtual void StartState()
     {
@@ -15,7 +16,7 @@ public class AbstractState : NetworkBehaviour
         {
             enabled = true;
 
-            foreach (var transition in transitions)
+            foreach (var transition in _transitions)
             {
                 transition.enabled = true;
             }
@@ -28,7 +29,7 @@ public class AbstractState : NetworkBehaviour
         {
             enabled = false;
 
-            foreach (var transition in transitions)
+            foreach (var transition in _transitions)
             {
                 transition.enabled = false;
             }
@@ -37,7 +38,7 @@ public class AbstractState : NetworkBehaviour
 
     public AbstractState GetNextState()
     {
-        foreach (var transition in transitions)
+        foreach (var transition in _transitions)
         {
             if(transition.shouldTransition)
             {

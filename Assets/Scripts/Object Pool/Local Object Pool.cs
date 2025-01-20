@@ -4,40 +4,40 @@ using UnityEngine.Pool;
 
 public class LocalObjectPool
 {
-    private ObjectPool<GameObject> pool;
+    private ObjectPool<GameObject> _pool;
 
-    private GameObject prefab;
+    private GameObject _prefab;
 
-    private Vector3 spawnPoint;
+    private Vector3 _spawnPoint;
 
     public LocalObjectPool(GameObject prefab, int objectsCount)
     {
-        this.prefab = prefab;
-        pool = new ObjectPool<GameObject>(OnCreate, OnGet, OnRelease, OnDestroy, false, objectsCount);
+        this._prefab = prefab;
+        _pool = new ObjectPool<GameObject>(OnCreate, OnGet, OnRelease, OnDestroy, false, objectsCount);
     }
 
     public GameObject Get(Vector3 position)
     {
-        spawnPoint = position;
-        GameObject obj = pool.Get();
+        _spawnPoint = position;
+        GameObject obj = _pool.Get();
 
         return obj;
     }
 
     public void Release(GameObject obj)
     {
-        pool.Release(obj);
+        _pool.Release(obj);
     }
 
     private GameObject OnCreate()
     {
-        GameObject obj = GameObject.Instantiate(prefab, spawnPoint, Quaternion.identity);
+        GameObject obj = GameObject.Instantiate(_prefab, _spawnPoint, Quaternion.identity);
         return obj;
     }
 
     private void OnGet(GameObject obj)
     {
-        obj.transform.position = spawnPoint;
+        obj.transform.position = _spawnPoint;
         obj.gameObject.SetActive(true);
     }
 

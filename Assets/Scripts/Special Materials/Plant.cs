@@ -9,6 +9,58 @@ using UnityEngine.EventSystems;
 
 public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
 {
+    private TrailRenderer _bulletTrail;
+    private GameObject _summonedPlant;
+
+    private int _initialProjctilePoolSize = 10;
+    private LocalObjectPool _projectilePool;
+
+    private int _initialSummonedEntityPoolSize = 10;
+    private LocalObjectPool _summonedEntityPool;
+
+    private bool _isRunningPassiveCoroutine = false;
+
+    private float _retaliateEffectDuration = 4f;
+
+    private bool _isRetaliateEffectActive = false;
+
+    private Vector3 _hookshotPosition;
+    private float _hookshotSpeed = 20f;
+    private float _hookshotSize;
+    private float _hookshotSpeedMin = 20f;
+    private float _hookshotSpeedMax = 40f;
+    private float _hookshotSpeedMultiplier = 2f;
+    private bool _isHookshotMoving = false;
+
+    private float _bulletSpeed = 200f;
+
+    private bool _throwing;
+    //private bool jumpRequest = false;
+
+    private float _climbSpeed = 5f;
+    private bool _climbing = false;
+
+    /*private float climbJumpUpForce = 14f;
+    private float climbJumpBackForce = 20f;*/
+
+    private float _detectionLength = 0.42f;
+    private float _sphereCastRadius = 0.1f;
+    private float _maxWallLookAngle = 30f;
+    private float _wallLookAngle;
+
+    private RaycastHit _frontBotWallHit;
+    private RaycastHit _frontTopWallHit;
+    private bool _wallFrontBot;
+    private bool _wallFrontTop;
+
+    private Transform _lastWall;
+    private Vector3 _lastWallNormal;
+    private float _minWallNormalAngleChange = 5f;
+
+    private bool _exitingWall;
+    //private float exitWallTime = 1f;
+    private float _exitWallTimer;
+
     public override float meleeAttackCooldown { get; } = 0.5f;
     public override float rangeAttackCooldown { get; } = 0.2f;
     public override float movementCooldown { get; } = 3f;
@@ -17,120 +69,71 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
 
     public override string projectilePrefabKey { get; } = ProjectileMapper.GetProjectileKey(ProjectileType.Plant);
 
-    private TrailRenderer bulletTrail;
-    private GameObject summonedPlant;
-
-    private int initialProjctilePoolSize = 10;
-    private LocalObjectPool projectilePool;
-
-    private int initialSummonedEntityPoolSize = 10;
-    private LocalObjectPool summonedEntityPool;
-
-    private bool isRunningPassiveCoroutine = false;
-
-    private float retaliateEffectDuration = 4f;
-    //[HideInInspector] public float retaliateCooldownTime = 3f;
-
-    private bool isRetaliateEffectActive = false;
-    //private bool isRetaliateOnCooldown = false;
-
-    private Vector3 hookshotPosition;
-    private float hookshotSpeed = 20f;
-    private float hookshotSize;
-    private float hookshotSpeedMin = 20f;
-    private float hookshotSpeedMax = 40f;
-    private float hookshotSpeedMultiplier = 2f;
-    private bool isHookshotMoving = false;
-
-    private float bulletSpeed = 200f;
-
-    private bool throwing;
-    //private bool jumpRequest = false;
-
-    private float climbSpeed = 5f;
-    private bool climbing = false;
-
-    /*private float climbJumpUpForce = 14f;
-    private float climbJumpBackForce = 20f;*/
-
-    private float detectionLength = 0.42f;
-    private float sphereCastRadius = 0.1f;
-    private float maxWallLookAngle = 30f;
-    private float wallLookAngle;
-
-    private RaycastHit frontBotWallHit;
-    private RaycastHit frontTopWallHit;
-    private bool wallFrontBot;
-    private bool wallFrontTop;
-
-    private Transform lastWall;
-    private Vector3 lastWallNormal;
-    private float minWallNormalAngleChange = 5f;
-
-    private bool exitingWall;
-    //private float exitWallTime = 1f;
-    private float exitWallTimer;
-
 
     private void Start()
     {
-        bulletTrail = projectilePrefabs[projectilePrefabKey].GetComponent<TrailRenderer>();
-        summonedPlant = Resources.Load<GameObject>("Plant/Summon");
+        _bulletTrail = projectilePrefabs[projectilePrefabKey].GetComponent<TrailRenderer>();
+        _summonedPlant = Resources.Load<GameObject>("Plant/Summon");
     }
 
-    public override void meleeAttack()
+    #region Melee
+
+    public override void MeleeAttack()
     {
-        Collider[] hitColliders = Physics.OverlapSphere(player.transform.position, 5f, LayerMask.GetMask("Player"));
+        Collider[] hitColliders = Physics.OverlapSphere(Player.transform.position, 5f, LayerMask.GetMask("Player"));
 
         foreach (Collider collider in hitColliders)
         {
             NetworkObject playerNetworkObject = collider.gameObject.GetComponent<NetworkObject>();
             if (playerNetworkObject != null && playerNetworkObject.OwnerClientId != ownerId)
             {
-                playerSkillsController.enemyHealthController.takeDamage(10);
+                playerSkillsController.enemyHealthController.TakeDamage(10);
             }
         }
     }
 
-    public override void rangeAttack(RaycastHit raycastHit)
+    #endregion
+
+    #region Range
+
+    public override void RangeAttack(RaycastHit raycastHit)
     {
         if (!IsServer)
         {
-            spawnProjectileLocal(raycastHit.point, playerSkillsController.projectileSpawnPoint.position);
+            SpawnProjectileLocal(raycastHit.point, playerObjectReferences.projectileSpawnPoint.position);
         }
 
-        spawnProjectileServerRpc(raycastHit.point, playerSkillsController.projectileSpawnPoint.position, ownerId);
+        SpawnProjectileServerRpc(raycastHit.point, playerObjectReferences.projectileSpawnPoint.position, ownerId);
 
         if (raycastHit.collider.gameObject.CompareTag("Player"))
         {
-            playerSkillsController.enemyHealthController.takeDamage(10f);
+            playerSkillsController.enemyHealthController.TakeDamage(10f);
         }
     }
 
-    private void spawnProjectileLocal(Vector3 raycastPoint, Vector3 projectileSpawnPoint)
+    private void SpawnProjectileLocal(Vector3 raycastPoint, Vector3 projectileSpawnPoint)
     {
         Vector3 aimDir = (raycastPoint - projectileSpawnPoint).normalized;
 
-        if (projectilePool == null)
+        if (_projectilePool == null)
         {
-            if (bulletTrail != null)
+            if (_bulletTrail != null)
             {
-                projectilePool = new LocalObjectPool(bulletTrail.gameObject, initialProjctilePoolSize);
+                _projectilePool = new LocalObjectPool(_bulletTrail.gameObject, _initialProjctilePoolSize);
             }
         }
 
-        GameObject projectile = projectilePool.Get(projectileSpawnPoint);
+        GameObject projectile = _projectilePool.Get(projectileSpawnPoint);
 
-
-        StartCoroutine(trailMovement(projectile, raycastPoint, () => projectilePool.Release(projectile)));  
+        StartCoroutine(TrailMovement(projectile, raycastPoint, () => _projectilePool.Release(projectile)));  
     }
 
     [Rpc(SendTo.Server)]
-    private void spawnProjectileServerRpc(Vector3 raycastPoint, Vector3 projectileSpawnPoint, ulong ownerId)
+    private void SpawnProjectileServerRpc(Vector3 raycastPoint, Vector3 projectileSpawnPoint, ulong ownerId)
     {
         Vector3 aimDir = (raycastPoint - projectileSpawnPoint).normalized;
 
-        NetworkObject projectile = NetworkObjectPool.Singleton.GetNetworkObject(bulletTrail.gameObject, projectileSpawnPoint);
+        NetworkObject projectile = NetworkObjectPool.Singleton.GetNetworkObject(_bulletTrail.gameObject, projectileSpawnPoint);
         projectile.Spawn();
 
         if (ownerId != 0)
@@ -138,7 +141,7 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
             projectile.NetworkHide(ownerId);
         }
 
-        StartCoroutine(trailMovement(projectile, raycastPoint, () =>
+        StartCoroutine(TrailMovement(projectile, raycastPoint, () =>
         {
             if (IsServer)
             {
@@ -150,7 +153,7 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
         }));
     }
 
-    private IEnumerator trailMovement(GameObject trail, Vector3 hitPoint, Action onComplete)
+    private IEnumerator TrailMovement(GameObject trail, Vector3 hitPoint, Action onComplete)
     {
         Vector3 startPosition = trail.transform.position;
         float distance = Vector3.Distance(trail.transform.position, hitPoint);
@@ -166,7 +169,7 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
         {
             trail.transform.position = Vector3.Lerp(startPosition, hitPoint, 1 - (remainingDistance / distance));
 
-            remainingDistance -= bulletSpeed * Time.deltaTime;
+            remainingDistance -= _bulletSpeed * Time.deltaTime;
 
             yield return null;
         }
@@ -178,7 +181,7 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
         onComplete?.Invoke();
     }
 
-    private IEnumerator trailMovement(NetworkObject trail, Vector3 hitPoint, Action onComplete)
+    private IEnumerator TrailMovement(NetworkObject trail, Vector3 hitPoint, Action onComplete)
     {
         Vector3 startPosition = trail.transform.position;
         float distance = Vector3.Distance(trail.transform.position, hitPoint);
@@ -194,11 +197,12 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
         {
             trail.transform.position = Vector3.Lerp(startPosition, hitPoint, 1 - (remainingDistance / distance));
 
-            remainingDistance -= bulletSpeed * Time.deltaTime;
+            remainingDistance -= _bulletSpeed * Time.deltaTime;
 
             yield return null;
         }
 
+        trailRenderer.Clear();
         trailRenderer.enabled = false;
 
         trail.transform.position = hitPoint;
@@ -206,60 +210,151 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
         onComplete?.Invoke();
     }
 
-    public override void movement()
+    #endregion
+
+    #region Movement
+
+    public override void Movement()
     {
         if (!disablingPlayerMove)
         {
-            handleHookshotStart();
+            HandleHookshotStart();
         }
     }
 
-    public override void defense()
+    private void HandleHookshotStart()
+    {
+        if (Physics.Raycast(playerMovementController.mainCamera.transform.position, playerMovementController.mainCamera.transform.forward, out RaycastHit hit))
+        {
+            _hookshotPosition = hit.point;
+            _hookshotSize = 0f;
+            playerObjectReferences.hookshotTransform.gameObject.SetActive(true);
+            playerObjectReferences.hookshotTransform.localScale = Vector3.zero;
+            _throwing = true;
+        }
+    }
+
+    private void HandleHookshotThrow()
+    {
+        playerObjectReferences.hookshotTransform.LookAt(_hookshotPosition);
+
+        float hookshotThrowSpeed = 100f;
+        _hookshotSize += hookshotThrowSpeed * Time.deltaTime;
+        playerObjectReferences.hookshotTransform.localScale = new Vector3(1, 1, _hookshotSize);
+
+        if (_hookshotSize >= Vector3.Distance(playerMovementController.transform.position, _hookshotPosition))
+        {
+            _throwing = false;
+            disablingPlayerMove = true;
+            _isHookshotMoving = true;
+        }
+    }
+
+    private Vector3 _hookshotDir;
+    private void HandleHookshotMovement()
+    {
+        _hookshotDir = (_hookshotPosition - playerMovementController.transform.position).normalized;
+
+        _hookshotSpeed = Mathf.Clamp(Vector3.Distance(playerMovementController.transform.position, _hookshotPosition), _hookshotSpeedMin, _hookshotSpeedMax);
+
+        playerMovementController.controller.Move(_hookshotDir * _hookshotSpeed * _hookshotSpeedMultiplier * Time.deltaTime);
+        _hookshotSize -= _hookshotSpeed * _hookshotSpeedMultiplier * Time.deltaTime;
+
+        if (_hookshotSize <= 0)
+        {
+            playerObjectReferences.hookshotTransform.localScale = Vector3.zero;
+        }
+        else
+        {
+            playerObjectReferences.hookshotTransform.localScale = new Vector3(1, 1, _hookshotSize);
+        }
+
+        float reachedHookshotPositionDistance = 2f;
+        if (Vector3.Distance(playerMovementController.transform.position, _hookshotPosition) < reachedHookshotPositionDistance)
+        {
+            StopHookshot();
+        }
+    }
+
+    private void StopHookshot()
+    {
+        disablingPlayerMove = false;
+        _isHookshotMoving = false;
+        playerMovementController.ResetGravityEffect();
+
+        playerObjectReferences.hookshotTransform.gameObject.SetActive(false);
+    }
+
+    #endregion
+
+    #region Defense
+    public override void Defense()
     {
         if(playerHealthController.OnDamageTaken == null)
         {
             playerHealthController.OnDamageTaken += HandleDamageTaken;
         }
 
-        if (!isRetaliateEffectActive)
+        if (!_isRetaliateEffectActive)
         {
             StartCoroutine(ActivateRetaliateEffect());
         }
     }
 
-    public override void special() 
+    private IEnumerator ActivateRetaliateEffect()
+    {
+        _isRetaliateEffectActive = true;
+
+        yield return new WaitForSeconds(_retaliateEffectDuration);
+
+        _isRetaliateEffectActive = false;
+    }
+
+    private void HandleDamageTaken(float damage)
+    {
+        if (_isRetaliateEffectActive)
+        {
+            playerSkillsController.enemyHealthController.TakeDamageByRetaliate(damage + (damage * 0.1f));
+        }
+    }
+
+    #endregion
+
+    #region Special
+
+    public override void Special() 
     {
         if (!IsServer)
         {
-            spawnSummonedEntityLocal(playerSkillsController.summonedEntitySpawnPoint.position);
+            SpawnSummonedEntityLocal(playerObjectReferences.summonedEntitySpawnPoint.position);
         }
 
-        spawnSummonedEntityServerRpc(playerSkillsController.summonedEntitySpawnPoint.position, ownerId);
+        SpawnSummonedEntityServerRpc(playerObjectReferences.summonedEntitySpawnPoint.position, ownerId);
     }
 
-    private void spawnSummonedEntityLocal(Vector3 summonedEntitySpawnPoint)
+    private void SpawnSummonedEntityLocal(Vector3 summonedEntitySpawnPoint)
     {
-        if (summonedEntityPool == null)
+        if (_summonedEntityPool == null)
         {
-            if (summonedPlant != null)
+            if (_summonedPlant != null)
             {
-                summonedEntityPool = new LocalObjectPool(summonedPlant, initialSummonedEntityPoolSize);
+                _summonedEntityPool = new LocalObjectPool(_summonedPlant, _initialSummonedEntityPoolSize);
             }
         }
 
-        SummonedEntity summonedEntity = summonedEntityPool.Get(summonedEntitySpawnPoint).GetComponent<SummonedEntity>();
+        SummonedEntity summonedEntity = _summonedEntityPool.Get(summonedEntitySpawnPoint).GetComponent<SummonedEntity>();
         if(summonedEntity.owner == null)
         {
             summonedEntity.owner = playerSkillsController;
         }
 
-        summonedEntity.setDeathAction(() => summonedEntityPool.Release(summonedEntity.gameObject));
+        summonedEntity.SetDeathAction(() => _summonedEntityPool.Release(summonedEntity.gameObject));
     }
 
     [Rpc(SendTo.Server)]
-    private void spawnSummonedEntityServerRpc(Vector3 summonedEntitySpawnPoint, ulong ownerId)
+    private void SpawnSummonedEntityServerRpc(Vector3 summonedEntitySpawnPoint, ulong ownerId)
     {
-        NetworkObject summonedEntityNetwork = NetworkObjectPool.Singleton.GetNetworkObject(summonedPlant, summonedEntitySpawnPoint);
+        NetworkObject summonedEntityNetwork = NetworkObjectPool.Singleton.GetNetworkObject(_summonedPlant, summonedEntitySpawnPoint);
         summonedEntityNetwork.Spawn();
 
         if (ownerId != 0)
@@ -274,7 +369,7 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
             summonedEntity.owner = client.PlayerObject.GetComponent<PlayerSkillsController>();
         }
 
-        summonedEntity.setDeathAction(() =>
+        summonedEntity.SetDeathAction(() =>
         {
             if (IsServer)
             {
@@ -286,41 +381,45 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
         });
     }
 
-    public override void passive() 
+    #endregion
+
+    #region Passive
+
+    public override void Passive() 
     {
         if (playerHealthController.currentHp.Value < playerHealthController.healthStats.maxHp)
         {
-            if (!isRunningPassiveCoroutine) 
+            if (!_isRunningPassiveCoroutine) 
             {
-                StartCoroutine(regenerationCoroutine(1f));
+                StartCoroutine(RegenerationCoroutine(1f));
             }
         }
 
-        wallCheck();
-        stateMachine();
+        WallCheck();
+        StateMachine();
 
-        if (climbing)
+        if (_climbing)
         {
-            climbingMovement();
+            ClimbingMovement();
         }
     }
 
-    private void wallCheck()
+    private void WallCheck()
     {
-        wallFrontBot = Physics.SphereCast(new Vector3(playerMovementController.transform.position.x, playerMovementController.transform.position.y - 1f, playerMovementController.transform.position.z), sphereCastRadius, playerMovementController.transform.forward, out frontBotWallHit, detectionLength, LayerMask.GetMask("Ground"));
-        wallFrontTop = Physics.SphereCast(new Vector3(playerMovementController.transform.position.x, playerMovementController.transform.position.y + 1f, playerMovementController.transform.position.z), sphereCastRadius, playerMovementController.transform.forward, out frontTopWallHit, detectionLength, LayerMask.GetMask("Ground"));
-        wallLookAngle = Vector3.Angle(playerMovementController.transform.forward, -frontBotWallHit.normal);
+        _wallFrontBot = Physics.SphereCast(new Vector3(playerMovementController.transform.position.x, playerMovementController.transform.position.y - 1f, playerMovementController.transform.position.z), _sphereCastRadius, playerMovementController.transform.forward, out _frontBotWallHit, _detectionLength, LayerMask.GetMask("Ground"));
+        _wallFrontTop = Physics.SphereCast(new Vector3(playerMovementController.transform.position.x, playerMovementController.transform.position.y + 1f, playerMovementController.transform.position.z), _sphereCastRadius, playerMovementController.transform.forward, out _frontTopWallHit, _detectionLength, LayerMask.GetMask("Ground"));
+        _wallLookAngle = Vector3.Angle(playerMovementController.transform.forward, -_frontBotWallHit.normal);
 
-        bool newWall = frontBotWallHit.transform != lastWall || Mathf.Abs(Vector3.Angle(lastWallNormal, frontBotWallHit.normal)) > minWallNormalAngleChange;
+        bool newWall = _frontBotWallHit.transform != _lastWall || Mathf.Abs(Vector3.Angle(_lastWallNormal, _frontBotWallHit.normal)) > _minWallNormalAngleChange;
     }
 
-    private void stateMachine()
+    private void StateMachine()
     {
-        if (wallFrontTop && inputs.move.y == 1 && wallLookAngle < maxWallLookAngle && !exitingWall)
+        if (_wallFrontTop && inputs.move.y == 1 && _wallLookAngle < _maxWallLookAngle && !_exitingWall)
         {
-            if (!climbing)
+            if (!_climbing)
             {
-                startClimbing();
+                StartClimbing();
             }
         }
         /*else if (exitingWall)
@@ -333,38 +432,38 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
         }*/
         else
         {
-            if ((climbing && !wallFrontBot) || (climbing && inputs.move.y < 1))
+            if ((_climbing && !_wallFrontBot) || (_climbing && inputs.move.y < 1))
             {
-                stopClimbing();
+                StopClimbing();
             }
         }
 
     }
 
-    private void startClimbing()
+    private void StartClimbing()
     {
-        climbing = true;
+        _climbing = true;
         disablingPlayerMove = true;
 
-        lastWall = frontBotWallHit.transform;
-        lastWallNormal = frontBotWallHit.normal;
+        _lastWall = _frontBotWallHit.transform;
+        _lastWallNormal = _frontBotWallHit.normal;
     }
 
-    private void climbingMovement()
+    private void ClimbingMovement()
     {
-        playerMovementController.controller.Move(new Vector3(0f, climbSpeed, 0f) * Time.deltaTime);
+        playerMovementController.controller.Move(new Vector3(0f, _climbSpeed, 0f) * Time.deltaTime);
     }
 
-    private void stopClimbing()
+    private void StopClimbing()
     {
-        climbing = false;
+        _climbing = false;
         disablingPlayerMove = false;
         /*if (exitWallTimer <= 0)
         {
             disablingPlayerMoveDuringMovementSkill = false;
         }*/
 
-        playerMovementController.resetGravityEffect();
+        playerMovementController.ResetGravityEffect();
     }
 
     /*private Vector3 moveDirection = Vector3.zero;
@@ -399,142 +498,41 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
         moveDirection = Vector3.zero;
     }*/
 
-    private IEnumerator ActivateRetaliateEffect()
+    private IEnumerator RegenerationCoroutine(float regenerationNumber)
     {
-        isRetaliateEffectActive = true;
+        _isRunningPassiveCoroutine = true;
 
-        yield return new WaitForSeconds(retaliateEffectDuration);
-
-        isRetaliateEffectActive = false;
-
-        /*StartCoroutine(RetaliateCooldown());*/
-    }
-
-    /*private IEnumerator RetaliateCooldown()
-    {
-        isRetaliateOnCooldown = true;
-
-        yield return new WaitForSeconds(retaliateCooldownTime);
-
-        isRetaliateOnCooldown = false;
-    }*/
-
-    private void HandleDamageTaken(float damage)
-    {
-        if (isRetaliateEffectActive)
-        {
-            playerSkillsController.enemyHealthController.takeDamageByRetaliate(damage + (damage * 0.1f));
-        }
-    }
-
-    private IEnumerator regenerationCoroutine(float regenerationNumber)
-    {
-        isRunningPassiveCoroutine = true;
-
-        playerHealthController.regeneration(regenerationNumber);
+        playerHealthController.Regeneration(regenerationNumber);
         yield return new WaitForSeconds(.1f);
 
-        isRunningPassiveCoroutine = false;
+        _isRunningPassiveCoroutine = false;
     }
 
-    private void handleHookshotStart()
-    {
-        if (Physics.Raycast(playerMovementController.mainCamera.transform.position, playerMovementController.mainCamera.transform.forward, out RaycastHit hit))
-        {
-            hookshotPosition = hit.point;
-            hookshotSize = 0f;
-            playerSkillsController.hookshotTransform.gameObject.SetActive(true);
-            playerSkillsController.hookshotTransform.localScale = Vector3.zero;
-            throwing = true;
-        }
-    }
+    #endregion
 
-    private void handleHookshotThrow()
-    {
-        playerSkillsController.hookshotTransform.LookAt(hookshotPosition);
-
-        float hookshotThrowSpeed = 100f;
-        hookshotSize += hookshotThrowSpeed * Time.deltaTime;
-        playerSkillsController.hookshotTransform.localScale = new Vector3(1, 1, hookshotSize);
-
-        if(hookshotSize >= Vector3.Distance(playerMovementController.transform.position, hookshotPosition))
-        {
-            throwing = false;
-            disablingPlayerMove = true;
-            isHookshotMoving = true;
-        }
-    }
-
-    private Vector3 hookshotDir;
-    private void handleHookshotMovement()
-    {
-        hookshotDir = (hookshotPosition - playerMovementController.transform.position).normalized;
-
-        hookshotSpeed = Mathf.Clamp(Vector3.Distance(playerMovementController.transform.position, hookshotPosition), hookshotSpeedMin, hookshotSpeedMax);
-
-        playerMovementController.controller.Move(hookshotDir * hookshotSpeed * hookshotSpeedMultiplier * Time.deltaTime);
-        hookshotSize -= hookshotSpeed * hookshotSpeedMultiplier * Time.deltaTime;
-
-        if (hookshotSize <= 0)
-        {
-            playerSkillsController.hookshotTransform.localScale = Vector3.zero;
-        }
-        else
-        {
-            playerSkillsController.hookshotTransform.localScale = new Vector3(1, 1, hookshotSize);
-        }
-
-        float reachedHookshotPositionDistance = 2f;
-        if(Vector3.Distance(playerMovementController.transform.position, hookshotPosition) < reachedHookshotPositionDistance)
-        {
-            stopHookshot();
-        }
-    }
-
-    private void stopHookshot()
-    {
-        disablingPlayerMove = false;
-        isHookshotMoving = false;
-        playerMovementController.resetGravityEffect();
-
-        playerSkillsController.hookshotTransform.gameObject.SetActive(false);
-    }
-
-    /*private void handleJump()
-    {
-        float speedMultiplier = 0.1f;
-        playerMovementController.characterVelocityMomentum = hookshotDir * speedMultiplier;
-
-        float jumpMultiplier = 0.3f;
-        playerMovementController.characterVelocityMomentum += Vector3.up * jumpMultiplier;
-
-        stopHookshot();
-    }
-*/
     public void HandleUpdate()
     {
-        if (isHookshotMoving)
+        if (_isHookshotMoving)
         {
-            handleHookshotMovement();
+            HandleHookshotMovement();
         }
-        if (throwing)
+        if (_throwing)
         {
-            handleHookshotThrow();
+            HandleHookshotThrow();
         }
     }
 
     public void ChangeSkinAction()
     {
-        if (isRetaliateEffectActive)
+        if (_isRetaliateEffectActive)
         {
-            Debug.Log("Test");
             StopCoroutine(ActivateRetaliateEffect());
-            isRetaliateEffectActive = false;
+            _isRetaliateEffectActive = false;
         }
 
-        if (throwing)
+        if (_throwing)
         {
-            stopHookshot();
+            StopHookshot();
         }
     }
 }

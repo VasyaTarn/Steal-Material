@@ -5,10 +5,10 @@ using Zenject;
 
 public class NetworkLoaderInstaller : MonoInstaller
 {
-    [SerializeField] private GameObject networkManager;
+    [SerializeField] private GameObject _networkManager;
 
     public override void InstallBindings()
     {
-        DontDestroyOnLoad(Instantiate(networkManager));
+        DontDestroyOnLoad(Instantiate(_networkManager));
     }
 }

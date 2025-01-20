@@ -9,39 +9,39 @@ public class SkinContoller : NetworkBehaviour
     public GameObject skinMaterial;
     [HideInInspector] public MaterialSkills skills;
 
-    private Inputs input;
-    private PlayerHealthController playerHealthController;
+    private Inputs _input;
+    private PlayerHealthController _playerHealthController;
 
-    private OutlineCustom outline;
-    private OutlineCustom previousOutline;
+    public OutlineCustom outline;
+    public OutlineCustom previousOutline;
 
-    private GameObject mainCamera;
+    private GameObject _mainCamera;
 
     [HideInInspector] public NetworkVariable<NetworkObjectReference> skinMaterialNetworkVar = new NetworkVariable<NetworkObjectReference>();
 
     private void Awake()
     {
         Camera camera = GetComponentInChildren<Camera>();
-        mainCamera = camera.gameObject;
+        _mainCamera = camera.gameObject;
     }
 
     private void Start()
     {
         if (!IsOwner)
         {
-            mainCamera.SetActive(false);
+            _mainCamera.SetActive(false);
             GetComponentInChildren<CinemachineVirtualCamera>().gameObject.SetActive(false);
             return;
-        }    
+        }
 
-        input = GetComponent<Inputs>();
-        playerHealthController = GetComponent<PlayerHealthController>();
+        _input = GetComponent<Inputs>();
+        _playerHealthController = GetComponent<PlayerHealthController>();
 
-        changeSkin(StarterMaterialManager.Instance.GetStarterMaterial());
+        ChangeSkin(StarterMaterialManager.Instance.GetStarterMaterial());
 
         skills.ownerId = OwnerClientId;
 
-        skinMaterialNetworkVar.OnValueChanged += onSkinMaterialChanged;
+        skinMaterialNetworkVar.OnValueChanged += OnSkinMaterialChanged;
     }
 
     private void Update()
@@ -50,44 +50,63 @@ public class SkinContoller : NetworkBehaviour
             return;
 
         RaycastHit hit;
-        if (Physics.Raycast(mainCamera.transform.position, mainCamera.transform.forward, out hit, 8f))
+        if (Physics.Raycast(_mainCamera.transform.position, _mainCamera.transform.forward, out hit, 8f))
         {
             if (hit.collider.gameObject.CompareTag("Material"))
             {
-                if(input.steal && (skinMaterial != hit.collider.gameObject))
+                if(_input.steal && (skinMaterial != hit.collider.gameObject))
                 {
                     if(skills is ISkinMaterialChanger skin)
                     {
                         skin.ChangeSkinAction();
                     }
 
-                    changeSkin(hit.collider.gameObject);
+                    ChangeSkin(hit.collider.gameObject);
                     skills.ownerId = OwnerClientId;
-                    playerHealthController.OnDamageTaken = null;
+                    _playerHealthController.OnDamageTaken = null;
                     
                 }
-                outline = hit.collider.GetComponent<OutlineCustom>();
+
+                if (outline == null || hit.collider.transform.position != outline.transform.position)
+                {
+                    if (hit.collider.TryGetComponent<OutlineCustom>(out var newOutline))
+                    {
+                        outline = newOutline;
+                    }
+                }
 
                 if (outline != null)
                 {
-                    outline.enable();
-                    previousOutline = outline;
+                    outline.Enable();
+                    if(previousOutline == null)
+                    {
+                        previousOutline = outline;
+                    }
+                    else
+                    {
+                        if (outline != previousOutline)
+                        {
+                            previousOutline.Disable();
+                            previousOutline = null;
+                        }
+                    }
                 }
             }
         }
         else
         {
-            if (previousOutline != null)
+            if (outline != null)
             {
-                previousOutline.disable();
+                outline.Disable();
+                outline = null;
                 previousOutline = null;
             }
         }
     }
 
-    public void changeSkin(GameObject materialObject)
+    public void ChangeSkin(GameObject materialObject)
     {
-        setSkinMaterial(materialObject);
+        SetSkinMaterial(materialObject);
 
         if (IsServer)
         {
@@ -95,28 +114,28 @@ public class SkinContoller : NetworkBehaviour
         }
         else
         {
-            requestSkinMaterialChangeServerRpc(materialObject.GetComponent<NetworkObject>().NetworkObjectId);
+            RequestSkinMaterialChangeServerRpc(materialObject.GetComponent<NetworkObject>().NetworkObjectId);
         }
 
-        skills.player = gameObject;
+        skills.Player = gameObject;
     }
 
-    private void setSkinMaterial(GameObject skinMaterial)
+    private void SetSkinMaterial(GameObject skinMaterial)
     {
         this.skinMaterial = skinMaterial;
         skills = skinMaterial.GetComponent<MaterialSkills>();
     }
 
-    private void onSkinMaterialChanged(NetworkObjectReference previousValue, NetworkObjectReference newValue)
+    private void OnSkinMaterialChanged(NetworkObjectReference previousValue, NetworkObjectReference newValue)
     {
         if (newValue.TryGet(out NetworkObject newNetworkObject))
         {
-            setSkinMaterial(newNetworkObject.gameObject);
+            SetSkinMaterial(newNetworkObject.gameObject);
         }
     }
 
     [ServerRpc]
-    private void requestSkinMaterialChangeServerRpc(ulong skinMaterialNetworkId)
+    private void RequestSkinMaterialChangeServerRpc(ulong skinMaterialNetworkId)
     {
         if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(skinMaterialNetworkId, out NetworkObject networkObject))
         {

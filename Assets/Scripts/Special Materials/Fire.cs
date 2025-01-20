@@ -11,115 +11,153 @@ using System.Linq;
 
 public class Fire : MaterialSkills
 {
+    private GameObject _bulletPrefab;
+
+    private int _initialProjctilePoolSize = 10;
+    private LocalObjectPool _projectilePool;
+
+    private GameObject _wisp;
+
+    private int _initialWispPoolSize = 3;
+    private LocalObjectPool _wispPool;
+
+    private int _wispLimit = 3;
+
+    private bool _isRunningPassiveCoroutine = false;
+    private bool _isRunningChargeCoroutine = false;
+
+    private float _minBurnDamage = 5f;
+    private float _currentburnDamage;
+    private float _chargeTime = 3f;
+
+    private int _maxChargeStage = 3;
+    private int _currentChargeStage;
+
+    private float _astralDuration = 2f;
     public override float meleeAttackCooldown { get; } = 0.5f;
     public override float rangeAttackCooldown { get; } = 0.2f;
     public override float movementCooldown { get; } = 2f;
     public override float defenseCooldown { get; } = 5f;
-    public override float specialCooldown { get; } = 0f;
+    public override float specialCooldown { get; } = 1f;
 
     public override string projectilePrefabKey { get; } = ProjectileMapper.GetProjectileKey(ProjectileType.Fire);
 
-    private GameObject bulletPrefab;
 
-    private int initialProjctilePoolSize = 10;
-    private LocalObjectPool projectilePool;
-
-    private GameObject wisp;
-
-    private int initialWispPoolSize = 10;
-    private LocalObjectPool wispPool;
-
-    private int wispLimit = 3;
-
-    private bool isRunningPassiveCoroutine = false;
-    private bool isRunningChargeCoroutine = false;
-
-    private float minBurnDamage = 5f;
-    private float currentburnDamage;
-    private float chargeTime = 3f;
-
-    private int maxChargeStage = 3;
-    private int currentChargeStage;
-
-    private float astralDuration = 2f;
 
     private void Start()
     {
-        wisp = Resources.Load<GameObject>("Fire/Wisp");
-        currentburnDamage = minBurnDamage;
-        bulletPrefab = projectilePrefabs[projectilePrefabKey];
+        _wisp = Resources.Load<GameObject>("Fire/Wisp");
+        _currentburnDamage = _minBurnDamage;
+        _bulletPrefab = projectilePrefabs[projectilePrefabKey];
     }
 
-    public override void meleeAttack()
+    #region Melee
+    public override void MeleeAttack()
     {
         if(playerHealthController.OnDamageTaken == null)
         {
             playerHealthController.OnDamageTaken += HandleDamageTaken;
         }
 
-        if (!isRunningChargeCoroutine && currentChargeStage < maxChargeStage)
+        if (!_isRunningChargeCoroutine && _currentChargeStage < _maxChargeStage)
         {
-            StartCoroutine(activateCharge(chargeTime));
+            StartCoroutine(ActivateCharge(_chargeTime));
         }
     }
 
-    private IEnumerator activateCharge(float time)
+    private IEnumerator ActivateCharge(float time)
     {
-        isRunningChargeCoroutine = true;
+        _isRunningChargeCoroutine = true;
         disablingPlayerMove = true;
 
         yield return new WaitForSeconds(time);
 
         disablingPlayerMove = false;
-        currentburnDamage *= 1.5f;
-        currentChargeStage++;
-        isRunningChargeCoroutine = false;
+        _currentburnDamage *= 1.5f;
+        _currentChargeStage++;
+        _isRunningChargeCoroutine = false;
 
     }
 
     private void HandleDamageTaken(float damage)
     {
-        if (currentburnDamage != minBurnDamage && currentChargeStage != 0)
+        if (_currentburnDamage != _minBurnDamage && _currentChargeStage != 0)
         {
-            currentChargeStage = 0;
-            currentburnDamage = minBurnDamage;
+            _currentChargeStage = 0;
+            _currentburnDamage = _minBurnDamage;
         }
 
     }
 
-    public override void rangeAttack(RaycastHit raycastHit)
+    #endregion
+
+    #region Range
+
+    public override void RangeAttack(RaycastHit raycastHit)
     {
         if (!IsServer)
         {
-            spawnProjectileLocal(raycastHit.point, playerSkillsController.projectileSpawnPoint.position);
+            SpawnProjectileLocal(raycastHit.point, playerObjectReferences.projectileSpawnPoint.position);
         }
 
-        spawnProjectileServerRpc(raycastHit.point, playerSkillsController.projectileSpawnPoint.position, ownerId);
+        SpawnProjectileServerRpc(raycastHit.point, playerObjectReferences.projectileSpawnPoint.position, ownerId);
     }
 
-    private void spawnProjectileLocal(Vector3 raycastPoint, Vector3 projectileSpawnPoint)
+    private void SpawnProjectileLocal(Vector3 raycastPoint, Vector3 projectileSpawnPoint)
     {
         Vector3 aimDir = (raycastPoint - projectileSpawnPoint).normalized;
 
-        if (projectilePool == null)
+        if (_projectilePool == null)
         {
-            if (bulletPrefab != null)
+            if (_bulletPrefab != null)
             {
-                projectilePool = new LocalObjectPool(bulletPrefab, initialProjctilePoolSize);
+                _projectilePool = new LocalObjectPool(_bulletPrefab, _initialProjctilePoolSize);
             }
         }
 
-        GameObject projectile = projectilePool.Get(projectileSpawnPoint);
+        GameObject projectile = _projectilePool.Get(projectileSpawnPoint);
 
-        projectile.GetComponent<BulletProjectile>().movement(aimDir, () => projectilePool.Release(projectile));
+        if(projectile != null && projectile.transform.childCount > 0)
+        {
+            for (int i = 0; i < projectile.transform.childCount; i++)
+            {
+                TrailRenderer child = projectile.transform.GetChild(i).GetComponent<TrailRenderer>();
+
+                if(child != null)
+                {
+                    if (!child.enabled)
+                    {
+                        child.enabled = true;
+                    }
+                }
+            }
+        }
+
+        projectile.GetComponent<BulletProjectile>().Movement(aimDir, () =>
+        {
+            _projectilePool.Release(projectile);
+
+            if (projectile != null && projectile.transform.childCount > 0)
+            {
+                for (int i = 0; i < projectile.transform.childCount; i++)
+                {
+                    TrailRenderer child = projectile.transform.GetChild(i).GetComponent<TrailRenderer>();
+                    if (child != null)
+                    {
+                        child.Clear();
+                        child.enabled = false;
+                    }
+                }
+            }
+        });
     }
 
     [Rpc(SendTo.Server)]
-    private void spawnProjectileServerRpc(Vector3 raycastPoint, Vector3 projectileSpawnPoint, ulong ownerId)
+    private void SpawnProjectileServerRpc(Vector3 raycastPoint, Vector3 projectileSpawnPoint, ulong ownerId)
     {
         Vector3 aimDir = (raycastPoint - projectileSpawnPoint).normalized;
 
-        NetworkObject projectile = NetworkObjectPool.Singleton.GetNetworkObject(bulletPrefab, projectileSpawnPoint);
+        NetworkObject projectile = NetworkObjectPool.Singleton.GetNetworkObject(_bulletPrefab, projectileSpawnPoint);
 
         projectile.Spawn();
 
@@ -128,9 +166,24 @@ public class Fire : MaterialSkills
             projectile.NetworkHide(ownerId);
         }
 
+        if (projectile != null && projectile.transform.childCount > 0)
+        {
+            for (int i = 0; i < projectile.transform.childCount; i++)
+            {
+                TrailRenderer child = projectile.transform.GetChild(i).GetComponent<TrailRenderer>();
+                if (child != null)
+                {
+                    if (!child.enabled)
+                    {
+                        child.enabled = true;
+                    }
+                }
+            }
+        }
+
         BulletProjectile bulletProjectile = projectile.GetComponent<BulletProjectile>();
 
-        bulletProjectile.setOwnerId(ownerId);
+        bulletProjectile.SetOwnerId(ownerId);
 
         if (NetworkManager.Singleton.ConnectedClients.TryGetValue(ownerId, out NetworkClient networkClient))
         {
@@ -142,13 +195,30 @@ public class Fire : MaterialSkills
                 Physics.IgnoreCollision(projectileCollider, characterController, true);
             }
 
-            bulletProjectile.movement(aimDir, () =>
+            bulletProjectile.Movement(aimDir, () =>
             {
                 if (IsServer)
                 {
                     if (projectile.IsSpawned)
                     {
-                        Physics.IgnoreCollision(projectileCollider, characterController, false);
+                        if (characterController != null)
+                        {
+                            Physics.IgnoreCollision(projectileCollider, characterController, false);
+                        }
+
+                        if (projectile != null && projectile.transform.childCount > 0)
+                        {
+                            for (int i = 0; i < projectile.transform.childCount; i++)
+                            {
+                                TrailRenderer child = projectile.transform.GetChild(i).GetComponent<TrailRenderer>();
+                                if (child != null)
+                                {
+                                    child.Clear();
+                                    child.enabled = false;
+                                }
+                            }
+                        }
+
                         projectile.Despawn();
                     }
                 }
@@ -156,7 +226,11 @@ public class Fire : MaterialSkills
         }
     }
 
-    public override void movement()
+    #endregion
+
+    #region Movement
+
+    public override void Movement()
     {
         Vector2 screenCenterPoint = new Vector2(Screen.width / 2f, Screen.height / 2f);
         Ray ray = Camera.main.ScreenPointToRay(screenCenterPoint);
@@ -164,51 +238,55 @@ public class Fire : MaterialSkills
 
         if (Physics.Raycast(ray, out hit, Mathf.Infinity, LayerMask.GetMask("Wisp"), QueryTriggerInteraction.Collide))
         {
-            StartCoroutine(teleport(hit.collider.gameObject.transform.position));
+            StartCoroutine(Teleport(hit.collider.gameObject.transform.position));
         }
     }
 
-    private IEnumerator teleport(Vector3 position)
+    private IEnumerator Teleport(Vector3 position)
     {
         disablingPlayerJumpAndGravity = true;
         disablingPlayerMove = true;
 
-        playerNetworkTransform.Teleport(position, player.transform.rotation, player.transform.localScale);
+        playerNetworkTransform.Teleport(position, Player.transform.rotation, Player.transform.localScale);
         yield return new WaitForSeconds(0.2f);
 
         disablingPlayerJumpAndGravity = false;
         disablingPlayerMove = false;
     }
 
-    public override void defense()
+    #endregion
+
+    #region Defense
+
+    public override void Defense()
     {
-        StartCoroutine(activateAstral());
+        StartCoroutine(ActivateAstral());
     }
 
-    private IEnumerator activateAstral()
+    private IEnumerator ActivateAstral()
     {
-        enableAstral();
-        updateAstralStateRpc(true, ownerId);
+        EnableAstral();
+        UpdateAstralStateRpc(true, ownerId);
 
-        yield return new WaitForSeconds(astralDuration);
+        yield return new WaitForSeconds(_astralDuration);
 
-        updateAstralStateRpc(false, ownerId);
-        disableAstral();
+        UpdateAstralStateRpc(false, ownerId);
+        DisableAstral();
     }
 
-    private void enableAstral()
+    private void EnableAstral()
     {
         disablingPlayerJumpAndGravity = true;
         disablingPlayerMove = true;
         playerHealthController.healthStats.isImmortal = true;
 
-        playerSkillsController.model.SetActive(false);
+        playerObjectReferences.model.SetActive(false);
         playerHealthController.healthbarSprite.gameObject.SetActive(false);
     }
 
-    private void disableAstral()
+    private void DisableAstral()
     {
-        playerSkillsController.model.SetActive(true);
+        playerObjectReferences.model.SetActive(true);
         playerHealthController.healthbarSprite.gameObject.SetActive(true);
         playerHealthController.healthStats.isImmortal = false;
         disablingPlayerJumpAndGravity = false;
@@ -216,35 +294,39 @@ public class Fire : MaterialSkills
     }
 
     [Rpc(SendTo.Server)]
-    private void updateAstralStateRpc(bool state, ulong id)
+    private void UpdateAstralStateRpc(bool state, ulong id)
     {
-        updateAstralStateClientRpc(state, id);
+        UpdateAstralStateClientRpc(state, id);
     }
 
     [Rpc(SendTo.ClientsAndHost)]
-    private void updateAstralStateClientRpc(bool state, ulong id)
+    private void UpdateAstralStateClientRpc(bool state, ulong id)
     {
         if (id != ownerId)
         {
             if (state)
             {
-                playerSkillsController.enemySkillsController.model.SetActive(false);
+                playerSkillsController.enemyObjectReferences.model.SetActive(false);
                 playerSkillsController.enemyHealthController.healthbarSprite.gameObject.SetActive(false);
             }
             else
             {
-                playerSkillsController.enemySkillsController.model.SetActive(true);
+                playerSkillsController.enemyObjectReferences.model.SetActive(true);
                 playerSkillsController.enemyHealthController.healthbarSprite.gameObject.SetActive(true);
             }
         }
     }
 
-    private Queue<Wisp> wispLimitedNetworkPoolForHost = new Queue<Wisp>();
-    private Queue<Wisp> wispLimitedNetworkPoolForClient = new Queue<Wisp>();
+    #endregion
 
-    private Queue<Wisp> wispLimitedLocalPool = new Queue<Wisp>();
+    #region Special
 
-    public override void special()
+    private Queue<Wisp> _wispLimitedNetworkPoolForHost = new Queue<Wisp>();
+    private Queue<Wisp> _wispLimitedNetworkPoolForClient = new Queue<Wisp>();
+
+    private Queue<Wisp> _wispLimitedLocalPool = new Queue<Wisp>();
+
+    public override void Special()
     {
         Vector2 screenCenterPoint = new Vector2(Screen.width / 2f, Screen.height / 2f);
         Ray ray = Camera.main.ScreenPointToRay(screenCenterPoint);
@@ -261,53 +343,39 @@ public class Fire : MaterialSkills
         {
             if (!IsServer)
             {
-                spawnWispLocal(wispSpawnPoint);
+                SpawnWispLocal(wispSpawnPoint);
             }
 
-            spawnWispServerRpc(wispSpawnPoint, ownerId);
+            SpawnWispServerRpc(wispSpawnPoint, ownerId);
         }
-
-        /*foreach (Wisp wisp in NetworkObjectPool.Singleton.GetActiveWisps(wisp))
-        {
-            Debug.Log(wisp);
-            if(wisp.owner.OwnerClientId == ownerId && !wispLimitedNetworkPool.Contains(wisp))
-            {
-                wispLimitedNetworkPool.Enqueue(wisp);
-            }
-        }
-
-        while(wispLimitedNetworkPool.Count > wispLimit)
-        {
-            wispLimitedNetworkPool.Dequeue().onDeathCallback?.Invoke();
-        }*/
     }
 
-    private void spawnWispLocal(Vector3 wispSpawnPoint)
+    private void SpawnWispLocal(Vector3 wispSpawnPoint)
     {
-        if (wispPool == null)
+        if (_wispPool == null)
         {
-            if (wisp != null)
+            if (_wisp != null)
             {
-                wispPool = new LocalObjectPool(wisp, initialWispPoolSize);
+                _wispPool = new LocalObjectPool(_wisp, _initialWispPoolSize);
             }
         }
 
-        Wisp wispObj = wispPool.Get(wispSpawnPoint).GetComponent<Wisp>();
+        Wisp wispObj = _wispPool.Get(wispSpawnPoint).GetComponent<Wisp>();
 
-        wispLimitedLocalPool.Enqueue(wispObj);
+        _wispLimitedLocalPool.Enqueue(wispObj);
 
-        wispObj.setDeathAction(() => wispPool.Release(wispObj.gameObject));
+        wispObj.SetDeathAction(() => _wispPool.Release(wispObj.gameObject));
 
-        if(wispLimitedLocalPool.Count > wispLimit)
+        if(_wispLimitedLocalPool.Count > _wispLimit)
         {
-            wispLimitedLocalPool.Dequeue().onDeathCallback?.Invoke();
+            _wispLimitedLocalPool.Dequeue().onDeathCallback?.Invoke();
         }
     }
 
     [Rpc(SendTo.Server)]
-    private void spawnWispServerRpc(Vector3 wispSpawnPoint, ulong ownerId)
+    private void SpawnWispServerRpc(Vector3 wispSpawnPoint, ulong ownerId)
     {
-        NetworkObject wispNetwork = NetworkObjectPool.Singleton.GetNetworkObject(wisp, wispSpawnPoint);
+        NetworkObject wispNetwork = NetworkObjectPool.Singleton.GetNetworkObject(_wisp, wispSpawnPoint);
         wispNetwork.Spawn();
 
         if (ownerId != 0)
@@ -319,37 +387,19 @@ public class Fire : MaterialSkills
 
         if(ownerId == 0)
         {
-            wispLimitedNetworkPoolForHost.Enqueue(wispObj);
+            _wispLimitedNetworkPoolForHost.Enqueue(wispObj);
         }
         else
         {
-            wispLimitedNetworkPoolForClient.Enqueue(wispObj);
+            _wispLimitedNetworkPoolForClient.Enqueue(wispObj);
         }
-
-        /*Debug.Log("-------Client------");
-
-        foreach (Wisp wisp in wispLimitedNetworkPoolForClient)
-        {
-            Debug.Log(wisp);
-        }
-
-        Debug.Log("-------------------");
-
-        Debug.Log("-------Host------");
-
-        foreach (Wisp wisp in wispLimitedNetworkPoolForHost)
-        {
-            Debug.Log(wisp);
-        }
-
-        Debug.Log("-------------------");*/
 
         if (NetworkManager.Singleton.ConnectedClients.TryGetValue(ownerId, out NetworkClient client))
         {
             wispObj.owner = client.PlayerObject.GetComponent<PlayerSkillsController>();
         }
 
-        wispObj.setDeathAction(() =>
+        wispObj.SetDeathAction(() =>
         {
             if (IsServer)
             {
@@ -360,41 +410,47 @@ public class Fire : MaterialSkills
             }
         });
 
-        if (wispLimitedNetworkPoolForHost.Count > wispLimit)
+        if (_wispLimitedNetworkPoolForHost.Count > _wispLimit)
         {
-            wispLimitedNetworkPoolForHost.Dequeue().onDeathCallback?.Invoke();
+            _wispLimitedNetworkPoolForHost.Dequeue().onDeathCallback?.Invoke();
         }
 
-        if (wispLimitedNetworkPoolForClient.Count > wispLimit)
+        if (_wispLimitedNetworkPoolForClient.Count > _wispLimit)
         {
-            wispLimitedNetworkPoolForClient.Dequeue().onDeathCallback?.Invoke();
+            _wispLimitedNetworkPoolForClient.Dequeue().onDeathCallback?.Invoke();
         }
     }
 
-    public override void passive()
+    #endregion
+
+    #region Passive
+
+    public override void Passive()
     {
-        Collider[] hitColliders = Physics.OverlapSphere(player.transform.position, 10f, LayerMask.GetMask("Player"));
+        Collider[] hitColliders = Physics.OverlapSphere(Player.transform.position, 10f, LayerMask.GetMask("Player"));
 
         foreach (Collider collider in hitColliders)
         {
             NetworkObject playerNetworkObject = collider.gameObject.GetComponent<NetworkObject>();
             if (playerNetworkObject != null && playerNetworkObject.OwnerClientId != ownerId)
             {
-                if(!isRunningPassiveCoroutine)
+                if(!_isRunningPassiveCoroutine)
                 {
-                    StartCoroutine(burnCoroutine(currentburnDamage));
+                    StartCoroutine(BurnCoroutine(_currentburnDamage));
                 }
             }
         }
     }
 
-    private IEnumerator burnCoroutine(float damageNumber)
+    private IEnumerator BurnCoroutine(float damageNumber)
     {
-        isRunningPassiveCoroutine = true;
+        _isRunningPassiveCoroutine = true;
 
-        playerSkillsController.enemyHealthController.takeDamage(damageNumber);
+        playerSkillsController.enemyHealthController.TakeDamage(damageNumber);
         yield return new WaitForSeconds(.5f);
 
-        isRunningPassiveCoroutine = false;
+        _isRunningPassiveCoroutine = false;
     }
+
+    #endregion
 }

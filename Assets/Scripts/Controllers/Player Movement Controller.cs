@@ -18,7 +18,7 @@ public class PlayerMovementController : NetworkBehaviour
     [Range(0.0f, 0.3f)]
     public float rotationSmoothTime = 0.05f;
 
-    public float speedChangeRate = 10.0f;
+    public float speedChangeRate = 3.0f;
 
     [Space(20)]
     public float gravity = -15f;
@@ -27,9 +27,6 @@ public class PlayerMovementController : NetworkBehaviour
 
     [Space(20)]
     [Header("Stats")]
-    /*public float moveSpeed;
-    public float jumpHeight;
-    public float mouseSensitivity;*/
     public MovementStatsLocal baseMovementStats;
     public bool isSwitchToNetworkSpeed = false;
 
@@ -55,30 +52,30 @@ public class PlayerMovementController : NetworkBehaviour
 
     public Vector2 look;
 
-    private float speed;
-    private float targetRotation = 0.0f;
-    private float rotationVelocity;
+    private float _speed;
+    private float _targetRotation = 0.0f;
+    private float _rotationVelocity;
     public float verticalVelocity;
-    private float terminalVelocity = 53.0f;
+    private float _terminalVelocity = 53.0f;
     [HideInInspector] public Vector3 characterVelocityMomentum;
     [HideInInspector] public Vector3 characterVelocity;
     [HideInInspector] public float momentumDrag = 3f;
-    private Vector3 targetDirection;
+    private Vector3 _targetDirection;
 
-    private float cinemachineTargetYaw;
-    private float cinemachineTargetPitch;
+    private float _cinemachineTargetYaw;
+    private float _cinemachineTargetPitch;
 
-    private float fallTimeoutDelta;
+    private float _fallTimeoutDelta;
 
-    private const float threshold = 0.01f;
+    private const float _threshold = 0.01f;
 
-    private PlayerInput playerInput;
+    private PlayerInput _playerInput;
     [HideInInspector] public CharacterController controller;
     [HideInInspector] public Inputs inputs;
-    [HideInInspector] public GameObject mainCamera;
-    private GameObject startCamera;
-    private SkinContoller skinContoller;
-    private BoxCollider boxCollider;
+    [HideInInspector] public Camera mainCamera;
+    private GameObject _startCamera;
+    private SkinContoller _skinContoller;
+    private BoxCollider _boxCollider;
 
     [HideInInspector] public StatusEffectsController<MovementStatsNetwork, MovementStatsLocal> statusEffectsController;
 
@@ -87,55 +84,57 @@ public class PlayerMovementController : NetworkBehaviour
 
     //public bool test = false;
 
-    private bool isCurrentDeviceMouse
+    private bool IsCurrentDeviceMouse
     {
         get
         {
-            return playerInput.currentControlScheme == "KeyboardMouse";
+            return _playerInput.currentControlScheme == "KeyboardMouse";
         }
     }
 
     private void Awake()
     {
         Camera camera = GetComponentInChildren<Camera>();
-        mainCamera = camera.gameObject;
+        mainCamera = camera;
+
+        Application.targetFrameRate = 60;
     }
 
     private void Start()
     {
         if (!IsOwner)
         {
-            mainCamera.SetActive(false);
+            mainCamera.gameObject.SetActive(false);
             return;
         }
 
-        setMovementStatsRpc();
+        SetMovementStatsRpc();
 
-        startCamera = GameObject.Find("Start Camera");
+        _startCamera = GameObject.Find("Start Camera");
 
-        if(startCamera != null)
+        if(_startCamera != null)
         {
-            startCamera.SetActive(false);
+            _startCamera.SetActive(false);
         }
 
         Cursor.visible = false;
 
         Cursor.lockState = CursorLockMode.Locked;
 
-        cinemachineTargetYaw = cinemachineCameraTarget.transform.rotation.eulerAngles.y;
+        _cinemachineTargetYaw = cinemachineCameraTarget.transform.rotation.eulerAngles.y;
 
-        playerInput = GetComponent<PlayerInput>();
+        _playerInput = GetComponent<PlayerInput>();
         controller = GetComponent<CharacterController>();
         inputs = GetComponent<Inputs>();
-        skinContoller = GetComponent<SkinContoller>();
+        _skinContoller = GetComponent<SkinContoller>();
 
         currentMoveSpeed = baseMovementStats.moveSpeed;
 
-        fallTimeoutDelta = fallTimeout;
+        _fallTimeoutDelta = fallTimeout;
     }
 
     [Rpc(SendTo.Server)]
-    private void setMovementStatsRpc()
+    private void SetMovementStatsRpc()
     {
         currentMovementStats.moveSpeed.Value = baseMovementStats.moveSpeed;
         currentMovementStats.jumpHeight.Value = baseMovementStats.jumpHeight;
@@ -149,7 +148,7 @@ public class PlayerMovementController : NetworkBehaviour
         if (!IsOwner)
             return;
 
-        if (!skinContoller.skills.disablingPlayerJumpAndGravity)
+        if (!_skinContoller.skills.disablingPlayerJumpAndGravity)
         {
             JumpAndGravity();
         }
@@ -160,13 +159,13 @@ public class PlayerMovementController : NetworkBehaviour
         if (!IsOwner)
             return;
 
-        if (!skinContoller.skills.disablingPlayerMove && !currentMovementStats.isStuned.Value)
+        if (!_skinContoller.skills.disablingPlayerMove && !currentMovementStats.isStuned.Value)
         {
             Move();
         }
 
         //Debug.Log(currentMovementStats.moveSpeed.Value);
-
+        
         GroundedCheck(); 
     }
 
@@ -174,6 +173,11 @@ public class PlayerMovementController : NetworkBehaviour
     {
         if (!IsOwner)
             return;
+
+        if (PauseScreen.isPause)
+        {
+            inputs.look = Vector2.zero;
+        }
 
         CameraRotation();
     }
@@ -198,17 +202,17 @@ public class PlayerMovementController : NetworkBehaviour
 
     private void CameraRotation()
     {
-        if (inputs.look.sqrMagnitude >= threshold)
+        if (inputs.look.sqrMagnitude >= _threshold)
         {
-            float deltaTimeMultiplier = isCurrentDeviceMouse ? 1.0f : Time.deltaTime;
-            cinemachineTargetYaw += inputs.look.x * deltaTimeMultiplier * currentMovementStats.mouseSensitivity.Value;
-            cinemachineTargetPitch += inputs.look.y * deltaTimeMultiplier * currentMovementStats.mouseSensitivity.Value;
+            float deltaTimeMultiplier = IsCurrentDeviceMouse ? 1.0f : Time.deltaTime;
+            _cinemachineTargetYaw += inputs.look.x * deltaTimeMultiplier * currentMovementStats.mouseSensitivity.Value;
+            _cinemachineTargetPitch += inputs.look.y * deltaTimeMultiplier * currentMovementStats.mouseSensitivity.Value;
         }
 
-        cinemachineTargetYaw = ClampAngle(cinemachineTargetYaw, float.MinValue, float.MaxValue);
-        cinemachineTargetPitch = ClampAngle(cinemachineTargetPitch, bottomClamp, topClamp);
+        _cinemachineTargetYaw = ClampAngle(_cinemachineTargetYaw, float.MinValue, float.MaxValue);
+        _cinemachineTargetPitch = ClampAngle(_cinemachineTargetPitch, bottomClamp, topClamp);
 
-        cinemachineCameraTarget.transform.rotation = Quaternion.Euler(cinemachineTargetPitch + cameraAngleOverride, cinemachineTargetYaw, 0.0f);
+        cinemachineCameraTarget.transform.rotation = Quaternion.Euler(_cinemachineTargetPitch + cameraAngleOverride, _cinemachineTargetYaw, 0.0f);
     }
 
     private void Move()
@@ -230,53 +234,47 @@ public class PlayerMovementController : NetworkBehaviour
             targetSpeed = 0.0f;
         }
 
-        float currentHoriaontalSpeed = new Vector3(controller.velocity.x, 0.0f, controller.velocity.z).magnitude;
-        float speedOffset = 0.1f;
+        float currentHorizontalSpeed = new Vector3(controller.velocity.x, 0.0f, controller.velocity.z).magnitude;
+        //float speedOffset = 0.2f;
 
-        if (currentHoriaontalSpeed < targetSpeed - speedOffset || currentHoriaontalSpeed > targetSpeed + speedOffset)
+        _speed = targetSpeed;
+
+        /*if (currentHorizontalSpeed < targetSpeed - speedOffset || currentHorizontalSpeed > targetSpeed + speedOffset)
         {
-            speed = Mathf.Lerp(currentHoriaontalSpeed, targetSpeed, Time.deltaTime * speedChangeRate);
+            speed = Mathf.Lerp(currentHorizontalSpeed, targetSpeed, Time.deltaTime * speedChangeRate);
 
             speed = Mathf.Round(speed * 1000f) / 1000f;
         }
         else
         {
             speed = targetSpeed;
-        }
+        }*/
 
         Vector3 inputDirection = new Vector3(inputs.move.x, 0.0f, inputs.move.y).normalized;
 
-        targetRotation = mainCamera.transform.eulerAngles.y;
+        _targetRotation = mainCamera.transform.eulerAngles.y;
 
-        float rotation = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref rotationVelocity, rotationSmoothTime);
+        float rotation = Mathf.SmoothDampAngle(transform.eulerAngles.y, _targetRotation, ref _rotationVelocity, rotationSmoothTime);
 
         transform.rotation = Quaternion.Euler(0.0f, rotation, 0.0f);
 
         Vector3 cameraForward = new Vector3(mainCamera.transform.forward.x, 0.0f, mainCamera.transform.forward.z).normalized;
         Vector3 cameraRight = new Vector3(mainCamera.transform.right.x, 0.0f, mainCamera.transform.right.z).normalized;
 
-        targetDirection = (cameraRight * inputDirection.x + cameraForward * inputDirection.z).normalized;
+        _targetDirection = (cameraRight * inputDirection.x + cameraForward * inputDirection.z).normalized;
 
-        characterVelocity = targetDirection * speed * Time.deltaTime;
+        characterVelocity = _targetDirection * _speed * Time.deltaTime;
+
+        //Debug.Log($"characterVelocity: {characterVelocity}, deltaTime: {Time.deltaTime}, targetDirection: {targetDirection}, speed: {speed}");
 
         controller.Move(characterVelocity + new Vector3(0f, verticalVelocity, 0f) * Time.deltaTime);
-        /*characterVelocity += characterVelocityMomentum;
-
-        if (characterVelocityMomentum.magnitude >= 0f)
-        {
-            characterVelocityMomentum -= characterVelocityMomentum * momentumDrag * Time.deltaTime;
-            if (characterVelocityMomentum.magnitude < 0.0f)
-            {
-                characterVelocityMomentum = Vector3.zero;
-            }
-        }*/
     }
-     
+
     private void JumpAndGravity()
     {
         if (grounded)
         {
-            fallTimeoutDelta = fallTimeout;
+            _fallTimeoutDelta = fallTimeout;
 
             if (verticalVelocity < 0.0f)
             {
@@ -290,19 +288,19 @@ public class PlayerMovementController : NetworkBehaviour
         }
         else
         {
-            if (!skinContoller.skills.disablingPlayerMove)
+            if (!_skinContoller.skills.disablingPlayerMove)
             {
                 inputs.jump = false;
             }
 
-            if (verticalVelocity < terminalVelocity)
+            if (verticalVelocity < _terminalVelocity)
             {
                 verticalVelocity += gravity * Time.deltaTime;
             }
         }
     }
 
-    public void resetGravityEffect()
+    public void ResetGravityEffect()
     {
         verticalVelocity = 0f;
     }
@@ -314,4 +312,9 @@ public class PlayerMovementController : NetworkBehaviour
         return Mathf.Clamp(angle, min, max);
 
     }
+
+    /*public override void OnNetworkDespawn()
+    {
+        startCamera.SetActive(true);
+    }*/
 }

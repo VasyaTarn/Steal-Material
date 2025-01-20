@@ -1,17 +1,16 @@
 using System;
 using Unity.Netcode;
 using UnityEngine;
+using static UnityEngine.EventSystems.EventTrigger;
 
 public class BasicProjectile : BulletProjectile
 {
-    private Rigidbody projectileRigidbody;
-
     private void OnTriggerEnter(Collider other)
     {
-        onTrigger(other);
+        OnTrigger(other);
     }
 
-    public override void movement(Vector3 direction, Action releaseCallback)
+    public override void Movement(Vector3 direction, Action releaseCallback)
     {
         if(projectileRigidbody == null)
         {
@@ -23,16 +22,16 @@ public class BasicProjectile : BulletProjectile
         projectileRigidbody.velocity = direction * speed;
     }
 
-    protected override void onTrigger(Collider target)
+    protected override void OnTrigger(Collider target)
     {
 
-        if (isNetworkObject && target.gameObject.CompareTag("Player"))
+        if (isNetworkObject && target.TryGetComponent(out PlayerHealthController healthController))
         {
-            PlayerHealthController healthController = target.gameObject.GetComponent<PlayerHealthController>();
 
             if (healthController != null)
             {
-                healthController.takeDamage(damage);
+                healthController.TakeDamage(damage);
+                Debug.Log("Test");
             }
         }
 

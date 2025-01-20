@@ -133,7 +133,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 3701522407
+  GlobalObjectIdHash: 140577970
   InScenePlacedSourceGlobalObjectIdHash: 0
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
@@ -155,6 +155,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   animator: {fileID: 0}
-  inputs: {fileID: 0}
-  playerMovementController: {fileID: 0}
-  playerHealthController: {fileID: 0}
+  _player: {fileID: 0}
+  lastMeleeAttackTime: 0
+  lastRangeAttackTime: 0
+  lastMovementTime: 0
+  lastDefenseTime: 0
+  lastSpecialTime: 0
+  disablingPlayerMove: 0
+  disablingPlayerShootingDuringMovementSkill: 0
+  disablingPlayerJumpAndGravity: 0

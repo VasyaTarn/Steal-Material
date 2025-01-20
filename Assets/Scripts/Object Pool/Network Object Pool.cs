@@ -13,14 +13,12 @@ public class NetworkObjectPool : NetworkBehaviour
 
     [SerializeField] private List<PoolConfigObject> pooledPrefabList;
 
-    private HashSet<GameObject> prefabs = new HashSet<GameObject>();
+    private HashSet<GameObject> _prefabs = new HashSet<GameObject>();
 
     public Dictionary<GameObject, ObjectPool<NetworkObject>> pooledObjects = new Dictionary<GameObject, ObjectPool<NetworkObject>>();
 
-    //private readonly Dictionary<GameObject, HashSet<NetworkObject>> activeObjects = new Dictionary<GameObject, HashSet<NetworkObject>>();
-
-    private Vector3 spawnPoint;
-    private ulong clientId;
+    private Vector3 _spawnPoint;
+    private ulong _clientId;
 
 
     private void Awake()
@@ -45,14 +43,14 @@ public class NetworkObjectPool : NetworkBehaviour
 
     public override void OnNetworkDespawn()
     {
-        foreach(var prefab in prefabs)
+        foreach(var prefab in _prefabs)
         {
             NetworkManager.Singleton.PrefabHandler.RemoveHandler(prefab);
             pooledObjects[prefab].Clear();
         }
 
         pooledObjects.Clear();
-        prefabs.Clear();
+        _prefabs.Clear();
     }
 
     public void OnValidate()
@@ -70,7 +68,7 @@ public class NetworkObjectPool : NetworkBehaviour
 
     public NetworkObject GetNetworkObject(GameObject prefab, Vector3 position)
     {
-        spawnPoint = position;
+        _spawnPoint = position;
         var networkObject = pooledObjects[prefab].Get();
 
         return networkObject;
@@ -90,47 +88,30 @@ public class NetworkObjectPool : NetworkBehaviour
     {
         NetworkObject CreateFunc()
         {
-            return Instantiate(prefab, spawnPoint, Quaternion.identity).GetComponent<NetworkObject>();
+            return Instantiate(prefab, _spawnPoint, Quaternion.identity).GetComponent<NetworkObject>();
         }
 
         void ActionOnGet(NetworkObject networkObject)
         {
-            networkObject.transform.position = spawnPoint;
+            networkObject.transform.position = _spawnPoint;
 
             if (!networkObject.gameObject.activeSelf)
             {
                 networkObject.gameObject.SetActive(true);
             }
-
-            /*if(!activeObjects.ContainsKey(prefab))
-            {
-                activeObjects[prefab] = new HashSet<NetworkObject>();
-            }
-            activeObjects[prefab].Add(networkObject);*/
         }
 
         void ActionOnRelease(NetworkObject networkObject)
         {
-
             networkObject.gameObject.SetActive(false);
-
-            /*if(activeObjects.ContainsKey(prefab))
-            {
-                activeObjects[prefab].Remove(networkObject);
-            }*/
         }
 
         void ActionOnDestroy(NetworkObject networkObject)
         {
             Destroy(networkObject.gameObject);
-
-            /*if (activeObjects.ContainsKey(prefab))
-            {
-                activeObjects[prefab].Remove(networkObject);
-            }*/
         }
 
-        prefabs.Add(prefab);
+        _prefabs.Add(prefab);
 
         pooledObjects[prefab] = new ObjectPool<NetworkObject>(CreateFunc, ActionOnGet, ActionOnRelease, ActionOnDestroy, false, prewarmCount);
 
@@ -148,17 +129,4 @@ public class NetworkObjectPool : NetworkBehaviour
         NetworkManager.Singleton.PrefabHandler.AddHandler(prefab, new PooledPrefabInstanceHandler(prefab, this));
 
     }
-
-    /*public List<Wisp> GetActiveWisps(GameObject prefab)
-    {
-        if (activeObjects.TryGetValue(prefab, out var activeNetworkObjects))
-        {
-            return activeNetworkObjects
-                .Select(networkObject => networkObject.GetComponent<Wisp>())
-                .Where(wisp => wisp != null)
-                .ToList();
-        }
-
-        return new List<Wisp>();
-    }*/
 }

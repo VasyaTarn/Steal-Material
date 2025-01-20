@@ -12,18 +12,14 @@ public class PlayerHealthController : NetworkBehaviour
 
     public Image healthbarSprite;
 
-    //private StatusEffectsController statusEffectsController;
-
     private void Start()
     {
-        //statusEffectsController = GetComponent<StatusEffectsController>();
-
         healthStats.inResistance = false;
         healthStats.resistancePercentage = 0f;
 
         if(IsServer)
         {
-            setMaxHpServerRpc();
+            SetMaxHpServerRpc();
         }
 
         currentHp.OnValueChanged += OnHealthChanged;
@@ -43,38 +39,38 @@ public class PlayerHealthController : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void setMaxHpServerRpc()
+    private void SetMaxHpServerRpc()
     {
         currentHp.Value = healthStats.maxHp;
     }
 
-    public void takeDamage(float damageNumber)
+    public void TakeDamage(float damageNumber)
     {
         if (!healthStats.isImmortal)
         {
-            submitDamageServerRpc(damageNumber);
+            SubmitDamageServerRpc(damageNumber);
         }
     }
 
-    public void takeDamageByRetaliate(float damageNumber)
+    public void TakeDamageByRetaliate(float damageNumber)
     {
         if (!healthStats.isImmortal)
         {
-            submitDamageByRetaliateServerRpc(damageNumber);
+            SubmitDamageByRetaliateServerRpc(damageNumber);
         }
     }
 
-    public void regeneration(float numberHP)
+    public void Regeneration(float numberHP)
     {
-        submitRegenerationServerRpc(numberHP);
+        SubmitRegenerationServerRpc(numberHP);
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void submitDamageServerRpc(float damageNumber)
+    private void SubmitDamageServerRpc(float damageNumber)
     {
-        decreaseHealth(damageNumber);
+        DecreaseHealth(damageNumber);
 
-        notifyDamageTakenClientRpc(damageNumber);
+        NotifyDamageTakenClientRpc(damageNumber);
 
         /*if (currentHp.Value <= 0)
         {
@@ -83,9 +79,9 @@ public class PlayerHealthController : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void submitDamageByRetaliateServerRpc(float damageNumber)
+    private void SubmitDamageByRetaliateServerRpc(float damageNumber)
     {
-        decreaseHealth(damageNumber);
+        DecreaseHealth(damageNumber);
 
         /*if (currentHp.Value <= 0)
         {
@@ -93,7 +89,7 @@ public class PlayerHealthController : NetworkBehaviour
         }*/
     }
 
-    private void decreaseHealth(float number)
+    private void DecreaseHealth(float number)
     {
         if (healthStats.inResistance)
         {
@@ -106,13 +102,13 @@ public class PlayerHealthController : NetworkBehaviour
     }
 
     [ClientRpc]
-    private void notifyDamageTakenClientRpc(float damage)
+    private void NotifyDamageTakenClientRpc(float damage)
     {
         OnDamageTaken?.Invoke(damage);
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void submitRegenerationServerRpc(float numberHP)
+    private void SubmitRegenerationServerRpc(float numberHP)
     {
         if(healthStats.maxHp > currentHp.Value)
         {
@@ -122,18 +118,18 @@ public class PlayerHealthController : NetworkBehaviour
         healthbarSprite.fillAmount = currentHp.Value / healthStats.maxHp;
     }
 
-    private void die()
+    private void Die()
     {
         Destroy(gameObject);
     }
 
-    public void enableResistance(float percentage)
+    public void EnableResistance(float percentage)
     {
         healthStats.inResistance = true;
         healthStats.resistancePercentage = percentage;
     }
 
-    public void disableResistance()
+    public void DisableResistance()
     {
         healthStats.inResistance = false;
         healthStats.resistancePercentage = 0f;

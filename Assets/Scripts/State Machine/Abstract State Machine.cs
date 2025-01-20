@@ -4,28 +4,29 @@ using UnityEngine;
 
 public class AbstractStateMachine : MonoBehaviour
 {
-    [SerializeField] private AbstractState startState;
+    [SerializeField] private AbstractState _startState;
 
-    private AbstractState currentState;
+    private AbstractState _currentState;
+
 
     private void Awake()
     {
-        currentState = startState;
+        _currentState = _startState;
     }
 
     private void Start()
     {
-        currentState.StartState();
+        _currentState.StartState();
     }
 
     private void Update()
     {
-        if(currentState == null)
+        if(_currentState == null)
         {
             return;
         }
 
-        AbstractState nextState = currentState.GetNextState();
+        AbstractState nextState = _currentState.GetNextState();
 
         if(nextState != null)
         {
@@ -35,14 +36,14 @@ public class AbstractStateMachine : MonoBehaviour
 
     private void Transition(AbstractState nextState)
     {
-        if (currentState != null)
+        if (_currentState != null)
         {
-            currentState.ExitState();
+            _currentState.ExitState();
         }
 
-        currentState = nextState;
+        _currentState = nextState;
 
-        currentState.StartState();
+        _currentState.StartState();
 
 
     }

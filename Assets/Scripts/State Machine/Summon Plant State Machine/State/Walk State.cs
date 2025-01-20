@@ -7,19 +7,11 @@ using static UnityEngine.UI.GridLayoutGroup;
 
 public class WalkState : AbstractState
 {
-    [SerializeField] private NavMeshAgent agent;
+    [SerializeField] private NavMeshAgent _agent;
+
 
     private void Update()
     {
-        /*if (IsServer)
-        {
-            var target = summon.owner.getEnemy();
-            if (target != null)
-            {
-                agent.SetDestination(target.transform.position);
-            }
-        }*/
-
         if (IsClient && !IsServer)
         {
             if (!summon.isNetworkObject)
@@ -27,7 +19,7 @@ public class WalkState : AbstractState
                 var target = summon.owner.enemy;
                 if (target != null)
                 {
-                    agent.SetDestination(target.transform.position);
+                    _agent.SetDestination(target.transform.position);
                 }
             }
         }
@@ -36,7 +28,7 @@ public class WalkState : AbstractState
             var target = summon.owner.enemy;
             if (target != null)
             {
-                agent.SetDestination(target.transform.position);
+                _agent.SetDestination(target.transform.position);
             }
         }
     }

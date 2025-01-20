@@ -15,11 +15,11 @@ public class Inputs : MonoBehaviour
     public bool defense;
     public bool special;
 
-    private bool stealTriggered;
-    private bool meleeAttackTriggered;
-    private bool movementSkillTriggered;
-    private bool defenseTriggered;
-    private bool specialTriggered;
+    private bool _stealTriggered;
+    private bool _meleeAttackTriggered;
+    private bool _movementSkillTriggered;
+    private bool _defenseTriggered;
+    private bool _specialTriggered;
 
     private void Update()
     {
@@ -28,35 +28,41 @@ public class Inputs : MonoBehaviour
 
     private void ResetTriggers()
     {
-        steal = stealTriggered;
-        meleeAttack = meleeAttackTriggered;
-        movementSkill = movementSkillTriggered;
-        defense = defenseTriggered;
-        special = specialTriggered;
+        steal = _stealTriggered;
+        meleeAttack = _meleeAttackTriggered;
+        movementSkill = _movementSkillTriggered;
+        defense = _defenseTriggered;
+        special = _specialTriggered;
 
-        stealTriggered = false;
-        meleeAttackTriggered = false;
-        movementSkillTriggered = false;
-        defenseTriggered = false;
-        specialTriggered = false;
+        _stealTriggered = false;
+        _meleeAttackTriggered = false;
+        _movementSkillTriggered = false;
+        _defenseTriggered = false;
+        _specialTriggered = false;
     }
 
     public void OnMove(InputValue value) => move = value.Get<Vector2>();
 
     public void OnLook(InputValue value) => look = value.Get<Vector2>();
 
-    public void OnJump(InputValue value) => jump = value.isPressed;
+    public void OnJump(InputValue value)
+    {
+        if(!PauseScreen.isPause)
+        {
+            jump = value.isPressed;
+        }
+    }    
 
     public void OnSteal(InputValue value)
     {
         if (value.isPressed)
-            stealTriggered = true;
+            _stealTriggered = true;
     }
 
     public void OnMeleeAttack(InputValue value)
     {
         if (value.isPressed)
-            meleeAttackTriggered = true;
+            _meleeAttackTriggered = true;
     }
 
     public void OnAim(InputValue value) => aim = value.isPressed;
@@ -66,19 +72,19 @@ public class Inputs : MonoBehaviour
     public void OnMovementSkill(InputValue value)
     {
         if (value.isPressed)
-            movementSkillTriggered = true;
+            _movementSkillTriggered = true;
     }
 
     public void OnDefense(InputValue value)
     {
         if (value.isPressed)
-            defenseTriggered = true;
+            _defenseTriggered = true;
     }
 
     public void OnSpecial(InputValue value)
     {
         if (value.isPressed)
-            specialTriggered = true;
+            _specialTriggered = true;
     }
 
 

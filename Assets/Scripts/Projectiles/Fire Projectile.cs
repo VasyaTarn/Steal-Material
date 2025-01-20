@@ -4,14 +4,12 @@ using UnityEngine;
 
 public class FireProjectile : BulletProjectile
 {
-    private Rigidbody projectileRigidbody;
-
     private void OnTriggerEnter(Collider other)
     {
-        onTrigger(other);
+        OnTrigger(other);
     }
 
-    public override void movement(Vector3 direction, Action releaseCallback)
+    public override void Movement(Vector3 direction, Action releaseCallback)
     {
         if (projectileRigidbody == null)
         {
@@ -23,7 +21,7 @@ public class FireProjectile : BulletProjectile
         projectileRigidbody.velocity = direction * speed;
     }
 
-    protected override void onTrigger(Collider target)
+    protected override void OnTrigger(Collider target)
     {
         if (isNetworkObject)
         {
@@ -34,7 +32,7 @@ public class FireProjectile : BulletProjectile
                 NetworkObject playerNetworkObject = collider.gameObject.GetComponent<NetworkObject>();
                 if (playerNetworkObject != null && playerNetworkObject.OwnerClientId != ownerId)
                 {
-                    playerNetworkObject.GetComponent<PlayerHealthController>().takeDamage(damage);
+                    playerNetworkObject.GetComponent<PlayerHealthController>().TakeDamage(damage);
                 }
             }
         }

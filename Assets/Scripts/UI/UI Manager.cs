@@ -5,7 +5,19 @@ public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
-    [SerializeField] private TMP_Text enemyMaterialDisplay;
+    [SerializeField] private TMP_Text _enemyMaterialDisplay;
+
+    [Header("Skills Icons")]
+    [SerializeField] private Melee _melee;
+    [SerializeField] private Movement _movement;
+    [SerializeField] private Defense _defense;
+    [SerializeField] private Special _special;
+
+    public Melee Melee => _melee;
+    public Movement Movement => _movement;
+    public Defense Defense => _defense;
+    public Special Special => _special;
+
 
     private void Awake()
     {
@@ -19,8 +31,10 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public TMP_Text getEnemyMaterialDisplay()
+    public TMP_Text GetEnemyMaterialDisplay()
     {
-        return enemyMaterialDisplay;
+        return _enemyMaterialDisplay;
     }
+
+    
 }

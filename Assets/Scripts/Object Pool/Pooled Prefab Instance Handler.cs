@@ -5,22 +5,22 @@ using UnityEngine;
 
 public class PooledPrefabInstanceHandler : INetworkPrefabInstanceHandler
 {
-    private GameObject prefab;
-    private NetworkObjectPool pool;
+    private GameObject _prefab;
+    private NetworkObjectPool _pool;
 
     public PooledPrefabInstanceHandler(GameObject prefab, NetworkObjectPool pool)
     {
-        this.prefab = prefab;
-        this.pool = pool;
+        this._prefab = prefab;
+        this._pool = pool;
     }
 
     NetworkObject INetworkPrefabInstanceHandler.Instantiate(ulong ownerClientId, Vector3 position, Quaternion rotation)
     {
-        return pool.GetNetworkObject(prefab, position);
+        return _pool.GetNetworkObject(_prefab, position);
     }
 
     void INetworkPrefabInstanceHandler.Destroy(NetworkObject networkObject)
     {
-        pool.ReturnNetworkObject(networkObject, prefab);
+        _pool.ReturnNetworkObject(networkObject, _prefab);
     }
 }

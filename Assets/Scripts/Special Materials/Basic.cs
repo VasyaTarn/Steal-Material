@@ -3,90 +3,96 @@ using UnityEngine;
 
 public class Basic : MaterialSkills, ISkinMaterialChanger
 {
-    public override float meleeAttackCooldown { get; } = 0.5f;
-    public override float rangeAttackCooldown { get; } = 0.5f;
+    private GameObject _bulletPrefab;
+
+    private int _initialProjctilePoolSize = 10;
+    private LocalObjectPool _projectilePool;
+
+    private SkinContoller _enemySkinController;
+
+    private LayerMask _layerForSpecial;
+
+    private bool _sprintStatus = false;
+    private bool _inBlock = false;
+
+    public override float meleeAttackCooldown { get; } = 1f;
+    public override float rangeAttackCooldown { get; } = 1f;
     public override float movementCooldown { get; } = 0f;
     public override float defenseCooldown { get; } = 0f;
     public override float specialCooldown { get; } = 5f;
 
     public override string projectilePrefabKey { get; } = ProjectileMapper.GetProjectileKey(ProjectileType.Basic);
 
-    private GameObject bulletPrefab;
-
-    private int initialProjctilePoolSize = 10;
-    private LocalObjectPool projectilePool;
-
-    private SkinContoller enemySkinController;
-
-    private LayerMask layerForSpecial;
-
-    private bool sprintStatus = false;
-    private bool inBlock = false;
-
-
     private void Start()
     {
-        layerForSpecial = LayerMask.GetMask("Player");
-        bulletPrefab = projectilePrefabs[projectilePrefabKey];
+        _layerForSpecial = LayerMask.GetMask("Player");
+        _bulletPrefab = projectilePrefabs[projectilePrefabKey];
     }
 
-    public override void meleeAttack()
+    #region Melee
+
+    public override void MeleeAttack()
     {
-        if (inBlock)
+        if (_inBlock)
         {
-            disableDefenseDuringOtherSkills();
+            DisableDefenseDuringOtherSkills();
         }
 
-        Collider[] hitColliders = Physics.OverlapSphere(playerSkillsController.basicMeleePointPosition.position, 0.5f, LayerMask.GetMask("Player"));
+        Collider[] hitColliders = Physics.OverlapSphere(playerObjectReferences.basicMeleePointPosition.position, 0.5f, LayerMask.GetMask("Player"));
 
         foreach (Collider collider in hitColliders)
         {
             NetworkObject playerNetworkObject = collider.gameObject.GetComponent<NetworkObject>();
+
             if (playerNetworkObject != null && playerNetworkObject.OwnerClientId != ownerId)
             {
-                playerSkillsController.enemyHealthController.takeDamage(10);
+                playerSkillsController.enemyHealthController.TakeDamage(10);
             }
         }
     }
 
-    public override void rangeAttack(RaycastHit raycastHit)
+    #endregion
+
+    #region Range
+
+    public override void RangeAttack(RaycastHit raycastHit)
     {
-        if (inBlock)
+        if (_inBlock)
         {
-            disableDefenseDuringOtherSkills();
+            DisableDefenseDuringOtherSkills();
         }
 
         if (!IsServer)
         {
-            spawnProjectileLocal(raycastHit.point, playerSkillsController.projectileSpawnPoint.position);
+            SpawnProjectileLocal(raycastHit.point, playerObjectReferences.projectileSpawnPoint.position);
         }
 
-        spawnProjectileServerRpc(raycastHit.point, playerSkillsController.projectileSpawnPoint.position, ownerId);
+        SpawnProjectileServerRpc(raycastHit.point, playerObjectReferences.projectileSpawnPoint.position, ownerId);
     }
 
-    private void spawnProjectileLocal(Vector3 raycastPoint, Vector3 projectileSpawnPoint)
+    private void SpawnProjectileLocal(Vector3 raycastPoint, Vector3 projectileSpawnPoint)
     {
         Vector3 aimDir = (raycastPoint - projectileSpawnPoint).normalized;
 
-        if (projectilePool == null)
+        if (_projectilePool == null)
         {
-            if (bulletPrefab != null)
+            if (_bulletPrefab != null)
             {
-                projectilePool = new LocalObjectPool(bulletPrefab, initialProjctilePoolSize);
+                _projectilePool = new LocalObjectPool(_bulletPrefab, _initialProjctilePoolSize);
             }
         }
 
-        GameObject projectile = projectilePool.Get(projectileSpawnPoint);
+        GameObject projectile = _projectilePool.Get(projectileSpawnPoint);
 
-        projectile.GetComponent<BulletProjectile>().movement(aimDir, () => projectilePool.Release(projectile));
+        projectile.GetComponent<BulletProjectile>().Movement(aimDir, () => _projectilePool.Release(projectile));
     }
 
     [Rpc(SendTo.Server)]
-    private void spawnProjectileServerRpc(Vector3 raycastPoint, Vector3 projectileSpawnPoint, ulong ownerId)
+    private void SpawnProjectileServerRpc(Vector3 raycastPoint, Vector3 projectileSpawnPoint, ulong ownerId)
     {
         Vector3 aimDir = (raycastPoint - projectileSpawnPoint).normalized;
 
-        NetworkObject projectile = NetworkObjectPool.Singleton.GetNetworkObject(bulletPrefab, projectileSpawnPoint);
+        NetworkObject projectile = NetworkObjectPool.Singleton.GetNetworkObject(_bulletPrefab, projectileSpawnPoint);
 
         projectile.Spawn();
 
@@ -99,18 +105,23 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
         {
             CharacterController characterController = networkClient.PlayerObject.gameObject.GetComponent<CharacterController>();
             Collider projectileCollider = projectile.GetComponent<Collider>();
+
             if (characterController != null && projectileCollider != null)
             {
                 Physics.IgnoreCollision(projectileCollider, characterController, true);
             }
 
-            projectile.GetComponent<BulletProjectile>().movement(aimDir, () =>
+            projectile.GetComponent<BulletProjectile>().Movement(aimDir, () =>
             {
                 if (IsServer)
                 {
                     if (projectile.IsSpawned)
                     {
-                        Physics.IgnoreCollision(projectileCollider, characterController, false);
+                        if (characterController != null)
+                        {
+                            Physics.IgnoreCollision(projectileCollider, characterController, false);
+                        }
+
                         projectile.Despawn();
                     }
                 }
@@ -118,22 +129,24 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
         }
     }
 
+    #endregion
 
+    #region Movement
 
-    public override void movement()
+    public override void Movement()
     {
         if (playerMovementController.grounded)
         {
-            if (inBlock)
+            if (_inBlock)
             {
-                disableDefenseDuringOtherSkills();
+                DisableDefenseDuringOtherSkills();
             }
 
-            sprintStatus = !sprintStatus;
+            _sprintStatus = !_sprintStatus;
 
             if (IsServer)
             {
-                if (sprintStatus)
+                if (_sprintStatus)
                 {
                     playerMovementController.currentMovementStats.moveSpeed.Value = playerMovementController.baseMovementStats.moveSpeed * 2;
                 }
@@ -144,7 +157,7 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
             }
             else
             {
-                if (sprintStatus)
+                if (_sprintStatus)
                 {
                     playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed * 2;
                 }
@@ -153,13 +166,13 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
                     playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed;
                 }
 
-                switchingSprintStatusRpc(sprintStatus);
+                SwitchingSprintStatusRpc(_sprintStatus);
             }
         }
     }
 
     [Rpc(SendTo.Server)]
-    private void switchingSprintStatusRpc(bool sprintStatus)
+    private void SwitchingSprintStatusRpc(bool sprintStatus)
     {
         if (sprintStatus)
         {
@@ -171,25 +184,87 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
         }
     }
 
-    public override void defense()
+    [Rpc(SendTo.Server)]
+    private void DisableSprintRpc()
     {
-        sprintStatus = false;
-        inBlock = !inBlock;
+        playerSkillsController.enemyMovementController.currentMovementStats.moveSpeed.Value = playerSkillsController.enemyMovementController.baseMovementStats.moveSpeed;
+    }
 
-        if (inBlock)
+    #endregion
+
+    #region Defense
+
+    public override void Defense()
+    {
+        _sprintStatus = false;
+        _inBlock = !_inBlock;
+
+        if (_inBlock)
         {
-            enableDefense();
+            EnableDefense();
 
         }
         else
         {
-            disableDefense();
+            DisableDefense();
         }
     }
 
-    public override void special()
+    private void EnableDefense()
     {
-        Collider[] hitColliders = Physics.OverlapSphere(player.transform.position, 10f, layerForSpecial);
+        if (IsServer)
+        {
+            playerMovementController.currentMovementStats.moveSpeed.Value = playerMovementController.baseMovementStats.moveSpeed / 2;
+        }
+        else
+        {
+            playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed / 2;
+            EnableDefenseRpc();
+        }
+
+        playerHealthController.EnableResistance(0.2f);
+    }
+
+    private void DisableDefense()
+    {
+        if (IsServer)
+        {
+            playerMovementController.currentMovementStats.moveSpeed.Value = playerMovementController.baseMovementStats.moveSpeed;
+        }
+        else
+        {
+            playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed;
+            DisableDefenseRpc();
+        }
+
+        playerHealthController.DisableResistance();
+    }
+
+    [Rpc(SendTo.Server)]
+    private void EnableDefenseRpc()
+    {
+        playerSkillsController.enemyMovementController.currentMovementStats.moveSpeed.Value = playerSkillsController.enemyMovementController.baseMovementStats.moveSpeed / 2;
+    }
+
+    [Rpc(SendTo.Server)]
+    private void DisableDefenseRpc()
+    {
+        playerSkillsController.enemyMovementController.currentMovementStats.moveSpeed.Value = playerSkillsController.enemyMovementController.baseMovementStats.moveSpeed;
+    }
+
+    private void DisableDefenseDuringOtherSkills()
+    {
+        _inBlock = false;
+        DisableDefense();
+    }
+
+    #endregion
+
+    #region Special
+
+    public override void Special()
+    {
+        Collider[] hitColliders = Physics.OverlapSphere(Player.transform.position, 10f, _layerForSpecial);
 
         foreach (var hitCollider in hitColliders)
         {
@@ -200,82 +275,40 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
             {
                 if (hitColliderSkin.skinMaterialNetworkVar.Value.TryGet(out NetworkObject networkObject))
                 {
-                    skinContoller.changeSkin(networkObject.gameObject);
+                    skinContoller.ChangeSkin(networkObject.gameObject);
                 }
             }
         }
     }
 
-    public override void passive()
+    #endregion
+
+    #region Passive
+
+    public override void Passive()
     {
         if (playerSkillsController.enemy != null)
         {
-            if (enemySkinController == null)
+            if (_enemySkinController == null)
             {
-                enemySkinController = playerSkillsController.enemy.GetComponent<SkinContoller>();
+                _enemySkinController = playerSkillsController.enemy.GetComponent<SkinContoller>();
             }
 
-            if (enemySkinController.skinMaterialNetworkVar.Value.TryGet(out NetworkObject networkObject))
+            if (_enemySkinController.skinMaterialNetworkVar.Value.TryGet(out NetworkObject networkObject))
             {
                 GameObject currentSkinMaterial = networkObject.gameObject;
-                UIManager.Instance.getEnemyMaterialDisplay().text = currentSkinMaterial.name;
+                UIManager.Instance.GetEnemyMaterialDisplay().text = currentSkinMaterial.name;
             }
         }
     }
 
-    private void enableDefense()
-    {
-        if (IsServer)
-        {
-            playerMovementController.currentMovementStats.moveSpeed.Value = playerMovementController.baseMovementStats.moveSpeed / 2;
-        }
-        else
-        {
-            playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed / 2;
-            enableDefenseRpc();
-        }
-
-        playerHealthController.enableResistance(0.2f);
-    }
-
-    private void disableDefense()
-    {
-        if (IsServer)
-        {
-            playerMovementController.currentMovementStats.moveSpeed.Value = playerMovementController.baseMovementStats.moveSpeed;
-        }
-        else
-        {
-            playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed;
-            disableDefenseRpc();
-        }
-
-        playerHealthController.disableResistance();
-    }
-
-    [Rpc(SendTo.Server)]
-    private void enableDefenseRpc()
-    {
-        playerSkillsController.enemyMovementController.currentMovementStats.moveSpeed.Value = playerSkillsController.enemyMovementController.baseMovementStats.moveSpeed / 2;
-    }
-
-    [Rpc(SendTo.Server)]
-    private void disableDefenseRpc()
-    {
-        playerSkillsController.enemyMovementController.currentMovementStats.moveSpeed.Value = playerSkillsController.enemyMovementController.baseMovementStats.moveSpeed;
-    }
-
-    private void disableDefenseDuringOtherSkills()
-    {
-        inBlock = false;
-        disableDefense();
-    }
+    #endregion
 
     public void ChangeSkinAction()
     {
-        if (sprintStatus)
+        if (_sprintStatus)
         {
-            sprintStatus = false;
+            _sprintStatus = false;
 
             if (IsServer)
             {
@@ -285,14 +318,8 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
             {
                 playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed;
 
-                disableSprintRpc();
+                DisableSprintRpc();
             }
         }
-    }
-
-    [Rpc(SendTo.Server)]
-    private void disableSprintRpc()
-    {
-        playerSkillsController.enemyMovementController.currentMovementStats.moveSpeed.Value = playerSkillsController.enemyMovementController.baseMovementStats.moveSpeed;
     }
 }
