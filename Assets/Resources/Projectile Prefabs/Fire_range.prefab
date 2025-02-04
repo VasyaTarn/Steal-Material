@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5514041488186256297}
   - component: {fileID: 6401437816293367631}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Trail
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -163,7 +163,7 @@ GameObject:
   - component: {fileID: 2362158757054336790}
   - component: {fileID: 4573128643255511309}
   - component: {fileID: 7302038781020396502}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Fire_range
   m_TagString: Projectile
   m_Icon: {fileID: 0}
@@ -179,7 +179,7 @@ Transform:
   m_GameObject: {fileID: 7293684642064217183}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.06, y: -1.034, z: -1.831}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 0.3, y: 0.3, z: 0.3}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -349,7 +349,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8fb82b0e25a45454a80a391780eda860, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speed: 80
+  speed: 60
   damage: 10
 --- !u!2083052967 &4573128643255511309
 VisualEffect:
@@ -439,7 +439,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1426786472917635821}
   - component: {fileID: 2976140918571537209}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: TrailAB
   m_TagString: Untagged
   m_Icon: {fileID: 0}

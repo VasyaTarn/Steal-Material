@@ -217,18 +217,6 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
-        m_MethodName: SetActive
-        m_Mode: 6
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 1
-        m_CallState: 2
       - m_Target: {fileID: 1261534324}
         m_TargetAssemblyTypeName: UnityEngine.GameObject, UnityEngine
         m_MethodName: SetActive
@@ -303,7 +291,7 @@ MonoBehaviour:
         m_CallState: 2
       - m_Target: {fileID: 1669964863}
         m_TargetAssemblyTypeName: JoinUIView, Assembly-CSharp
-        m_MethodName: resetErrorText
+        m_MethodName: ResetErrorText
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1098,6 +1086,11 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -6471036689783332660, guid: 4b161d0d0c8c96d45b993e957823d67a,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 68e1457b1c66bf14aade2dadde352ad0, type: 2}
     - target: {fileID: -6345285779419725671, guid: 4b161d0d0c8c96d45b993e957823d67a,
         type: 3}
       propertyPath: m_StaticEditorFlags
@@ -1369,7 +1362,7 @@ MonoBehaviour:
         m_CallState: 2
       - m_Target: {fileID: 1669964863}
         m_TargetAssemblyTypeName: JoinUIView, Assembly-CSharp
-        m_MethodName: resetErrorText
+        m_MethodName: ResetErrorText
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2307,7 +2300,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1312189595}
         m_TargetAssemblyTypeName: Exit, Assembly-CSharp
-        m_MethodName: quitGame
+        m_MethodName: QuitGame
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2765,13 +2758,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 56e301fed4a3d70439594fa7cd5b1ce9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _inputCodeField: {fileID: 0}
-  _codeText: {fileID: 0}
-  _submit: {fileID: 0}
-  _back: {fileID: 0}
-  _loadingIcon: {fileID: 0}
-  _errorText: {fileID: 0}
-  _exit: {fileID: 0}
+  _inputCodeField: {fileID: 1824341072}
+  _codeText: {fileID: 182902746}
+  _submit: {fileID: 26028523}
+  _back: {fileID: 449616224}
+  _loadingIcon: {fileID: 1261534326}
+  _errorText: {fileID: 1014296619}
+  _exit: {fileID: 1312189592}
 --- !u!4 &1669964864
 Transform:
   m_ObjectHideFlags: 0

@@ -12,11 +12,13 @@ public class UIManager : MonoBehaviour
     [SerializeField] private Movement _movement;
     [SerializeField] private Defense _defense;
     [SerializeField] private Special _special;
+    [SerializeField] private Steal _steal;
 
     public Melee Melee => _melee;
     public Movement Movement => _movement;
     public Defense Defense => _defense;
     public Special Special => _special;
+    public Steal Steal => _steal;
 
 
     private void Awake()
