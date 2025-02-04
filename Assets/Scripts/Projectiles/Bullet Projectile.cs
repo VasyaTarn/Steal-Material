@@ -14,11 +14,6 @@ public abstract class BulletProjectile : NetworkBehaviour
     protected Action onReleaseCallback;
     protected ulong ownerId;
 
-    private void Start()
-    {
-        projectileRigidbody.collisionDetectionMode = CollisionDetectionMode.Continuous;
-    }
-
     public override void OnNetworkSpawn()
     {
         isNetworkObject = true;

@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using Unity.Netcode;
 using Cinemachine;
+using System.Collections;
 using Zenject;
 
 public class SkinContoller : NetworkBehaviour
@@ -11,13 +12,20 @@ public class SkinContoller : NetworkBehaviour
 
     private Inputs _input;
     private PlayerHealthController _playerHealthController;
+    private PlayerMovementController _playerMovementController;
 
-    public OutlineCustom outline;
-    public OutlineCustom previousOutline;
+    private OutlineCustom _outline;
+    private OutlineCustom _previousOutline;
 
     private GameObject _mainCamera;
 
+    private float _lastStealTime = 0.0f;
+    private float _stealCooldown = 3f;
+
     [HideInInspector] public NetworkVariable<NetworkObjectReference> skinMaterialNetworkVar = new NetworkVariable<NetworkObjectReference>();
+
+    public bool disablingPlayerSkills { get; private set; }
+    public SkinView skinView { get; private set; }
 
     private void Awake()
     {
@@ -36,6 +44,11 @@ public class SkinContoller : NetworkBehaviour
 
         _input = GetComponent<Inputs>();
         _playerHealthController = GetComponent<PlayerHealthController>();
+        _playerMovementController = GetComponent<PlayerMovementController>();
+
+        skinView = GetComponent<SkinView>();
+
+        skinView.Initialize();
 
         ChangeSkin(StarterMaterialManager.Instance.GetStarterMaterial());
 
@@ -54,40 +67,46 @@ public class SkinContoller : NetworkBehaviour
         {
             if (hit.collider.gameObject.CompareTag("Material"))
             {
-                if(_input.steal && (skinMaterial != hit.collider.gameObject))
+                if (_input.steal && skinMaterial != hit.collider.gameObject)
                 {
-                    if(skills is ISkinMaterialChanger skin)
+                    if (Time.time >= _lastStealTime + _stealCooldown)
                     {
-                        skin.ChangeSkinAction();
+                        if (skills is ISkinMaterialChanger skin)
+                        {
+                            skin.ChangeSkinAction();
+                        }
+
+                        ChangeSkin(hit.collider.gameObject);
+                        skills.ownerId = OwnerClientId;
+                        _playerHealthController.OnDamageTaken = null;
+
+                        UIManager.Instance.Steal.ActivateCooldown(_stealCooldown);
+                        _lastStealTime = Time.time;
                     }
 
-                    ChangeSkin(hit.collider.gameObject);
-                    skills.ownerId = OwnerClientId;
-                    _playerHealthController.OnDamageTaken = null;
-                    
                 }
 
-                if (outline == null || hit.collider.transform.position != outline.transform.position)
+                if (_outline == null || hit.collider.transform.position != _outline.transform.position)
                 {
                     if (hit.collider.TryGetComponent<OutlineCustom>(out var newOutline))
                     {
-                        outline = newOutline;
+                        _outline = newOutline;
                     }
                 }
 
-                if (outline != null)
+                if (_outline != null)
                 {
-                    outline.Enable();
-                    if(previousOutline == null)
+                    _outline.Enable();
+                    if(_previousOutline == null)
                     {
-                        previousOutline = outline;
+                        _previousOutline = _outline;
                     }
                     else
                     {
-                        if (outline != previousOutline)
+                        if (_outline != _previousOutline)
                         {
-                            previousOutline.Disable();
-                            previousOutline = null;
+                            _previousOutline.Disable();
+                            _previousOutline = null;
                         }
                     }
                 }
@@ -95,18 +114,34 @@ public class SkinContoller : NetworkBehaviour
         }
         else
         {
-            if (outline != null)
+            if (_outline != null)
             {
-                outline.Disable();
-                outline = null;
-                previousOutline = null;
+                _outline.Disable();
+                _outline = null;
+                _previousOutline = null;
             }
         }
     }
 
     public void ChangeSkin(GameObject materialObject)
     {
-        SetSkinMaterial(materialObject);
+        if(skinMaterial == null)
+        {
+            SetSkinMaterial(materialObject);
+        }
+        else
+        {
+            SetSkinMaterial(materialObject);
+
+            if(!IsServer)
+            {
+                skinView.ChangeArmatureLocal(materialObject.GetComponent<MaterialSkills>().MaterialType);
+            }
+
+            skinView.ChangeArmatureNetwork(materialObject.GetComponent<MaterialSkills>().MaterialType);
+            StartCoroutine(DisablePlayerMove(0.8f));
+        }
+
 
         if (IsServer)
         {
@@ -114,7 +149,7 @@ public class SkinContoller : NetworkBehaviour
         }
         else
         {
-            RequestSkinMaterialChangeServerRpc(materialObject.GetComponent<NetworkObject>().NetworkObjectId);
+            RequestSkinMaterialChangeRpc(materialObject.GetComponent<NetworkObject>().NetworkObjectId);
         }
 
         skills.Player = gameObject;
@@ -134,12 +169,25 @@ public class SkinContoller : NetworkBehaviour
         }
     }
 
-    [ServerRpc]
-    private void RequestSkinMaterialChangeServerRpc(ulong skinMaterialNetworkId)
+    [Rpc(SendTo.Server)]
+    private void RequestSkinMaterialChangeRpc(ulong skinMaterialNetworkId)
     {
         if (NetworkManager.Singleton.SpawnManager.SpawnedObjects.TryGetValue(skinMaterialNetworkId, out NetworkObject networkObject))
         {
             skinMaterialNetworkVar.Value = new NetworkObjectReference(networkObject);
         }
+    }
+
+    private IEnumerator DisablePlayerMove(float delay)
+    {
+        _playerMovementController.disablingPlayerMove = true;
+        _playerMovementController.disablingPlayerJumpAndGravity = true;
+        disablingPlayerSkills = true;
+
+        yield return new WaitForSeconds(delay);
+
+        _playerMovementController.disablingPlayerMove = false;
+        _playerMovementController.disablingPlayerJumpAndGravity = false;
+        disablingPlayerSkills = false;
     }
 }

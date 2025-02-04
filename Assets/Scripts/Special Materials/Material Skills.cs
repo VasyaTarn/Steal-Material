@@ -9,7 +9,7 @@ public abstract class MaterialSkills : NetworkBehaviour
 {
     public Animator animator;
 
-    public GameObject player; //Chk
+    public GameObject player;
     public Action<GameObject> OnPlayerChanged;
 
     private Dictionary<GameObject, (Inputs inputs, PlayerMovementController movement, PlayerHealthController health, PlayerSkillsController skills, SkinContoller skin, ClientNetworkTransform networkTransform, PlayerObjectReferences playerObjectReferences)> _playerComponents = new Dictionary<GameObject, (Inputs, PlayerMovementController, PlayerHealthController, PlayerSkillsController, SkinContoller, ClientNetworkTransform, PlayerObjectReferences)>();
@@ -28,11 +28,13 @@ public abstract class MaterialSkills : NetworkBehaviour
     [HideInInspector] public float lastDefenseTime = 0.0f;
     [HideInInspector] public float lastSpecialTime = 0.0f;
 
-    [HideInInspector] public bool disablingPlayerMove = false;
-    [HideInInspector] public bool disablingPlayerShootingDuringMovementSkill = false;
-    [HideInInspector] public bool disablingPlayerJumpAndGravity = false;
+    //[HideInInspector] public bool disablingPlayerMove = false;
+    //[HideInInspector] public bool disablingPlayerShootingDuringMovementSkill = false;
+    //[HideInInspector] public bool disablingPlayerJumpAndGravity = false;
 
     protected Dictionary<string, GameObject> projectilePrefabs;
+
+    protected Type materialType;
 
     public GameObject Player
     {
@@ -62,6 +64,8 @@ public abstract class MaterialSkills : NetworkBehaviour
 
     public virtual float specialCooldown { get; }
 
+    public Type MaterialType => materialType;
+
 
     [Inject]
     public void Construct(ProjectilePrefabs projectilePrefabsManager)
@@ -69,17 +73,17 @@ public abstract class MaterialSkills : NetworkBehaviour
         projectilePrefabs = projectilePrefabsManager.GetProjectilePrefabs();
     }
 
-    public virtual void MeleeAttack() {}
+    public abstract void MeleeAttack();
 
-    public virtual void RangeAttack(RaycastHit raycastHit) {}
+    public abstract void RangeAttack(RaycastHit raycastHit);
 
-    public virtual void Movement() {}
+    public abstract void Movement();
 
-    public virtual void Defense() {}
+    public abstract void Defense();
 
-    public virtual void Special() {}
+    public abstract void Special();
 
-    public virtual void Passive() {}
+    public abstract void Passive();
 
     public void HandlePlayerChanged(GameObject player)
     {
