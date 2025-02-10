@@ -1,3 +1,4 @@
+using System;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -10,12 +11,19 @@ public class PlayerAnimationController : NetworkBehaviour
     private PlayerArmature _cachedComponentNetwork;
 
     private PlayerMovementController _movementController;
+    private PlayerHealthController _healthController;
+
+    public SkinView SkinView => _skinView;
+    public PlayerArmature CachedComponentNetwork => _cachedComponentNetwork;
 
     private void Start()
     {
         _skinView = GetComponent<SkinView>();
         _inputs = GetComponent<Inputs>();
         _movementController = GetComponent<PlayerMovementController>();
+        _healthController = GetComponent<PlayerHealthController>();
+
+        _healthController.OnDeth += HandlePlayerDeath;
     }
 
     private void Update()
@@ -102,5 +110,43 @@ public class PlayerAnimationController : NetworkBehaviour
 
             _cachedComponentNetwork.animator.SetBool("IsFalling", !grounded);
         }
+    }
+
+    private void HandlePlayerDeath(ulong playerId)
+    {
+        PlayDeathAnimationClientRpc(playerId);
+
+        if (playerId == 0)
+        {
+            _movementController.disablingPlayerMove = true;
+        }
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void PlayDeathAnimationClientRpc(ulong playerId)
+    {
+        if (IsClient && !IsServer && IsOwner)
+        {
+            _skinView.CurrentArmatureLocal.animator.SetBool("IsDeath", true);
+            _skinView.CurrentArmatureLocal.isEnabledAnimatorIK = false;
+            _movementController.disablingPlayerMove = true;
+        }
+
+        if (playerId == 0)
+        {
+            _cachedComponentNetwork.animator.SetBool("IsDeath", true);
+            _cachedComponentNetwork.isEnabledAnimatorIK = false;
+        }
+        else
+        {
+            EnableDeathAnimationRpc();
+        }
+    }
+
+    [Rpc(SendTo.Server)]
+    private void EnableDeathAnimationRpc()
+    {
+        _cachedComponentNetwork.animator.SetBool("IsDeath", true);
+        _cachedComponentNetwork.isEnabledAnimatorIK = false;
     }
 }

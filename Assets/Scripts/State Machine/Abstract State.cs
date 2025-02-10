@@ -7,7 +7,7 @@ public class AbstractState : NetworkBehaviour
 {
     [SerializeField] private AbstractTransition[] _transitions;
 
-    [SerializeField] protected SummonedEntity summon;
+    //[SerializeField] protected SummonedEntity summon;
 
 
     public virtual void StartState()

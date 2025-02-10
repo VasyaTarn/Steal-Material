@@ -1,8 +1,15 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
+
+enum PointWaveType : byte
+{
+    Blue,
+    Red
+}
 
 public class CapturePoint : NetworkBehaviour
 {
@@ -15,7 +22,12 @@ public class CapturePoint : NetworkBehaviour
     private Coroutine _increaseCorotine;
     private Coroutine _decreaseCorotine;
 
+    private GameObject _pointWaveBlue;
+    private GameObject _pointWaveRed;
+
     private bool _isLockUp = false;
+
+    public event Action<ulong> OnPointCaptured;
 
     [SerializeField] private CaptureProgressBar _captureProgressBar;
 
@@ -26,15 +38,22 @@ public class CapturePoint : NetworkBehaviour
             _captureProgressBar.ProgressBarImage.color = Color.blue;
         }
 
-        _units.count.OnValueChanged += (oldValue, newValue) =>
-        {
-            _captureProgressBar.ProgressBarImage.fillAmount = newValue / _maxScore;
-        };
+        _pointWaveBlue = Resources.Load<GameObject>("General/Point_Wave_Blue");
+        _pointWaveRed = Resources.Load<GameObject>("General/Point_Wave_Red");
 
-        _units.ownerId.OnValueChanged += (oldOwner, newOwner) =>
-        {
-            _captureProgressBar.ProgressBarImage.color = (newOwner == 0) ? Color.blue : Color.red;
-        };
+        _units.count.OnValueChanged += HandleCountChanged;
+
+        _units.ownerId.OnValueChanged += HandleOwnerChanged;
+    }
+
+    private void HandleOwnerChanged(ulong previousValue, ulong newValue)
+    {
+        _captureProgressBar.ProgressBarImage.color = (newValue == 0) ? Color.blue : Color.red;
+    }
+
+    private void HandleCountChanged(float previousValue, float newValue)
+    {
+        _captureProgressBar.ProgressBarImage.fillAmount = newValue / _maxScore;
     }
 
     private void OnTriggerEnter(Collider other)
@@ -114,8 +133,23 @@ public class CapturePoint : NetworkBehaviour
                     StartCoroutine(LockUpPoint(3f));
                 }
             }
+
             yield return new WaitForSeconds(0.2f);
         }
+
+        if(_units.count.Value == _maxScore)
+        {
+            OnPointCaptured?.Invoke(_units.ownerId.Value);
+
+            if(_units.ownerId.Value == 0)
+            {
+                SpawnPointWaveServerRpc(transform.position, _units.ownerId.Value, PointWaveType.Blue);
+            }
+            else
+            {
+                SpawnPointWaveServerRpc(transform.position, _units.ownerId.Value, PointWaveType.Red);
+            }
+        }    
     }
 
     [Rpc(SendTo.Server)]
@@ -175,5 +209,55 @@ public class CapturePoint : NetworkBehaviour
     private void SetNewOwnerServerRpc(ulong newOwnerId)
     {
         _units.ownerId.Value = newOwnerId;
+    }
+
+    [Rpc(SendTo.Server)]
+    private void SpawnPointWaveServerRpc(Vector3 pointWaveSpawnPoint, ulong ownerId, PointWaveType type)
+    {
+        if (type == PointWaveType.Blue)
+        {
+            NetworkObject pointWaveBlueNetwork = NetworkObjectPool.Singleton.GetNetworkObject(_pointWaveBlue, pointWaveSpawnPoint);
+            pointWaveBlueNetwork.Spawn();
+
+            StartCoroutine(ReleasePointWave(5f, () =>
+            {
+                if (IsServer)
+                {
+                    if (pointWaveBlueNetwork.IsSpawned)
+                    {
+                        pointWaveBlueNetwork.Despawn();
+                    }
+                }
+            }));
+        }
+        else if (type == PointWaveType.Red)
+        {
+            NetworkObject pointWaveRedNetwork = NetworkObjectPool.Singleton.GetNetworkObject(_pointWaveRed, pointWaveSpawnPoint);
+            pointWaveRedNetwork.Spawn();
+
+            StartCoroutine(ReleasePointWave(5f, () =>
+            {
+                if (IsServer)
+                {
+                    if (pointWaveRedNetwork.IsSpawned)
+                    {
+                        pointWaveRedNetwork.Despawn();
+                    }
+                }
+            }));
+        }
+    }
+
+    private IEnumerator ReleasePointWave(float duration, Action releaseAction)
+    {
+        yield return new WaitForSeconds(duration);
+
+        releaseAction?.Invoke();
+    }
+
+    public override void OnDestroy()
+    {
+        _units.count.OnValueChanged -= HandleCountChanged;
+        _units.ownerId.OnValueChanged -= HandleOwnerChanged;
     }
 }

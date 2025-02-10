@@ -284,13 +284,11 @@ public class Fire : MaterialSkills
         playerHealthController.healthStats.isImmortal = true;
 
         playerObjectReferences.model.SetActive(false);
-        playerHealthController.healthbarSprite.gameObject.SetActive(false);
     }
 
     private void DisableAstral()
     {
         playerObjectReferences.model.SetActive(true);
-        playerHealthController.healthbarSprite.gameObject.SetActive(true);
         playerHealthController.healthStats.isImmortal = false;
         playerMovementController.disablingPlayerJumpAndGravity = false;
         playerMovementController.disablingPlayerMove = false;
@@ -310,12 +308,10 @@ public class Fire : MaterialSkills
             if (state)
             {
                 playerSkillsController.enemyObjectReferences.model.SetActive(false);
-                playerSkillsController.enemyHealthController.healthbarSprite.gameObject.SetActive(false);
             }
             else
             {
                 playerSkillsController.enemyObjectReferences.model.SetActive(true);
-                playerSkillsController.enemyHealthController.healthbarSprite.gameObject.SetActive(true);
             }
         }
     }

@@ -477,7 +477,7 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
             if (_enemySkinController.skinMaterialNetworkVar.Value.TryGet(out NetworkObject networkObject))
             {
                 GameObject currentSkinMaterial = networkObject.gameObject;
-                UIManager.Instance.GetEnemyMaterialDisplay().text = "Enemy:\n" + currentSkinMaterial.name;
+                UIReferencesManager.Instance.EnemyMaterialDisplay.text = "Enemy:\n" + currentSkinMaterial.name;
             }
         }
     }
@@ -502,6 +502,6 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
             }
         }
 
-        UIManager.Instance.GetEnemyMaterialDisplay().text = "";
+        UIReferencesManager.Instance.EnemyMaterialDisplay.text = "";
     }
 }

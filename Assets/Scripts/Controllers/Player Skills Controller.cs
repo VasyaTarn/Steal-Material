@@ -73,7 +73,7 @@ public class PlayerSkillsController : NetworkBehaviour
                 if (_skin.skinMaterial != null && _inputs.meleeAttack && Time.time >= _skin.skills.lastMeleeAttackTime + _skin.skills.meleeAttackCooldown && !_playerMovementController.currentMovementStats.isStuned.Value)
                 {
                     _skin.skills.MeleeAttack();
-                    UIManager.Instance.Melee.ActivateCooldown(_skin.skills.meleeAttackCooldown);
+                    UIReferencesManager.Instance.Melee.ActivateCooldown(_skin.skills.meleeAttackCooldown);
                     _skin.skills.lastMeleeAttackTime = Time.time;
                 }
 
@@ -101,21 +101,21 @@ public class PlayerSkillsController : NetworkBehaviour
                 if (_inputs.movementSkill && Time.time >= _skin.skills.lastMovementTime + _skin.skills.movementCooldown && !_playerMovementController.currentMovementStats.isStuned.Value)
                 {
                     _skin.skills.Movement();
-                    UIManager.Instance.Movement.ActivateCooldown(_skin.skills.movementCooldown);
+                    UIReferencesManager.Instance.Movement.ActivateCooldown(_skin.skills.movementCooldown);
                     _skin.skills.lastMovementTime = Time.time;
                 }
 
                 if (_inputs.defense && Time.time >= _skin.skills.lastDefenseTime + _skin.skills.defenseCooldown && !_playerMovementController.currentMovementStats.isStuned.Value)
                 {
                     _skin.skills.Defense();
-                    UIManager.Instance.Defense.ActivateCooldown(_skin.skills.defenseCooldown);
+                    UIReferencesManager.Instance.Defense.ActivateCooldown(_skin.skills.defenseCooldown);
                     _skin.skills.lastDefenseTime = Time.time;
                 }
 
                 if (_inputs.special && Time.time >= _skin.skills.lastSpecialTime + _skin.skills.specialCooldown && !_playerMovementController.currentMovementStats.isStuned.Value)
                 {
                     _skin.skills.Special();
-                    UIManager.Instance.Special.ActivateCooldown(_skin.skills.specialCooldown);
+                    UIReferencesManager.Instance.Special.ActivateCooldown(_skin.skills.specialCooldown);
                     _skin.skills.lastSpecialTime = Time.time;
                 }
             }

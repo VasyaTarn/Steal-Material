@@ -6323,7 +6323,7 @@ MonoBehaviour:
       m_Type:
         m_SerializableType: UnityEngine.Color, UnityEngine.CoreModule, Version=0.0.0.0,
           Culture=neutral, PublicKeyToken=null
-      m_SerializableObject: '{"r":0.6075471043586731,"g":0.0,"b":0.0,"a":1.0}'
+      m_SerializableObject: '{"r":0.0,"g":0.0,"b":0.0,"a":1.0}'
     m_Space: 2147483647
   m_Property:
     name: _FrontColor
@@ -6493,7 +6493,7 @@ MonoBehaviour:
       m_Type:
         m_SerializableType: UnityEngine.Color, UnityEngine.CoreModule, Version=0.0.0.0,
           Culture=neutral, PublicKeyToken=null
-      m_SerializableObject: '{"r":2.262742042541504,"g":0.14998990297317506,"b":0.03412294015288353,"a":1.0}'
+      m_SerializableObject: '{"r":0.05660378932952881,"g":0.05660378932952881,"b":0.05660378932952881,"a":1.0}'
     m_Space: 2147483647
   m_Property:
     name: _BackColor

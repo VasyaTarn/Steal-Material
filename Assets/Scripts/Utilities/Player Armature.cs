@@ -20,6 +20,8 @@ public class PlayerArmature : MonoBehaviour
     private RaycastPerformer _performer;
     [Range(0, 1)][SerializeField] private float _ikWeight;
 
+    [HideInInspector] public bool isEnabledAnimatorIK = true;
+
     public Type Type => _type;
     public Transform ProjectileSpawnPoint => _projectileSpawnPoint;
 
@@ -35,27 +37,30 @@ public class PlayerArmature : MonoBehaviour
     {
         if (animator)
         {
-            if (_performer.PerformRaycast(out RaycastHit raycastHit))
+            if (isEnabledAnimatorIK)
             {
-                float maxDistance = 1.5f;
-                float minDistance = 1f;
-
-                Vector3 direction = raycastHit.point - animator.GetBoneTransform(HumanBodyBones.RightHand).position;
-                float distance = direction.magnitude;
-
-                if (distance > maxDistance)
+                if (_performer.PerformRaycast(out RaycastHit raycastHit))
                 {
-                    direction = direction.normalized * maxDistance;
-                    raycastHit.point = animator.GetBoneTransform(HumanBodyBones.RightHand).position + direction;
-                }
-                else if(distance < minDistance)
-                {
-                    raycastHit.point += raycastHit.normal * (minDistance - distance);
-                }
+                    float maxDistance = 1.5f;
+                    float minDistance = 1f;
 
-                animator.SetIKPositionWeight(AvatarIKGoal.RightHand, _ikWeight);
-                animator.SetIKRotationWeight(AvatarIKGoal.RightHand, _ikWeight);
-                animator.SetIKPosition(AvatarIKGoal.RightHand, raycastHit.point);
+                    Vector3 direction = raycastHit.point - animator.GetBoneTransform(HumanBodyBones.RightHand).position;
+                    float distance = direction.magnitude;
+
+                    if (distance > maxDistance)
+                    {
+                        direction = direction.normalized * maxDistance;
+                        raycastHit.point = animator.GetBoneTransform(HumanBodyBones.RightHand).position + direction;
+                    }
+                    else if (distance < minDistance)
+                    {
+                        raycastHit.point += raycastHit.normal * (minDistance - distance);
+                    }
+
+                    animator.SetIKPositionWeight(AvatarIKGoal.RightHand, _ikWeight);
+                    animator.SetIKRotationWeight(AvatarIKGoal.RightHand, _ikWeight);
+                    animator.SetIKPosition(AvatarIKGoal.RightHand, raycastHit.point);
+                }
             }
         }
     }

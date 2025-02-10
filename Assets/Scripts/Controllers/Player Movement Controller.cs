@@ -76,8 +76,8 @@ public class PlayerMovementController : NetworkBehaviour
 
     [HideInInspector] public StatusEffectsController<MovementStatsNetwork, MovementStatsLocal> statusEffectsController;
 
-    [HideInInspector] public bool disablingPlayerMove = false;
-    [HideInInspector] public bool disablingPlayerJumpAndGravity = false;
+    [HideInInspector] public bool disablingPlayerMove = true;
+    [HideInInspector] public bool disablingPlayerJumpAndGravity = true;
 
     //private bool rotateOnMove = true;
     //private bool isMovementDisabled = false;

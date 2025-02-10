@@ -2628,6 +2628,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1567548716}
+  - component: {fileID: 1567548717}
   - component: {fileID: 1567548715}
   m_Layer: 0
   m_Name: Relay
@@ -2666,6 +2667,27 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1567548717
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1567548714}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  GlobalObjectIdHash: 3770882539
+  InScenePlacedSourceGlobalObjectIdHash: 0
+  AlwaysReplicateAsRoot: 0
+  SynchronizeTransform: 1
+  ActiveSceneSynchronization: 0
+  SceneMigrationSynchronization: 1
+  SpawnWithObservers: 1
+  DontDestroyWithOwner: 0
+  AutoObjectParentSync: 1
 --- !u!1 &1578492854
 GameObject:
   m_ObjectHideFlags: 0
@@ -2765,6 +2787,8 @@ MonoBehaviour:
   _loadingIcon: {fileID: 1261534326}
   _errorText: {fileID: 1014296619}
   _exit: {fileID: 1312189592}
+  _create: {fileID: 1729580683}
+  _join: {fileID: 99684379}
 --- !u!4 &1669964864
 Transform:
   m_ObjectHideFlags: 0

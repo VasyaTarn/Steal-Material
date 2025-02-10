@@ -1,7 +1,10 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Xml.Serialization;
 using Unity.Multiplayer.Samples.Utilities.ClientAuthority;
 using Unity.Netcode;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -10,6 +13,29 @@ public class PlayerSpawner : NetworkBehaviour
     [SerializeField] private Transform hostSpawnPoint;
     [SerializeField] private Transform clientSpawnPoint;
 
+    [SerializeField] private GameObject _loadingScreenBackground;
+    [SerializeField] private GameObject _loadingIcon;
+
+    private PlayerHealthController _healthController;
+
+    [SerializeField] private GameObject _hostBarrier;
+    [SerializeField] private GameObject _clientBarrier;
+
+    public event Action<PlayerHealthController> OnPlayerHealthControllerChanged;
+
+    public PlayerHealthController playerHealthController 
+    {
+        get => _healthController;
+        private set
+        {
+            if(_healthController != value )
+            {
+                _healthController = value;
+                OnPlayerHealthControllerChanged?.Invoke(_healthController);
+            }
+        }
+    }
+
     private void Start()
     {
         NetworkManager.Singleton.OnClientConnectedCallback += OnPlayerConnected;
@@ -17,124 +43,228 @@ public class PlayerSpawner : NetworkBehaviour
     
     private void OnPlayerConnected(ulong clientId)
     {
-        if (NetworkManager.Singleton.IsClient && !NetworkManager.Singleton.IsServer)
+        if (clientId != 0)
         {
             StartCoroutine(SpawnClient(clientId));
         }
-        
-        if(NetworkManager.Singleton.IsServer)
+        else
         {
             StartCoroutine(SpawnHost(clientId));
         }
+
+        if (NetworkManager.Singleton.IsServer)
+        {
+            if(NetworkManager.Singleton.ConnectedClientsList.Count > 1)
+            {
+                StartCoroutine(BarrierTimer(5f));
+            }
+        }
+    }
+
+    private IEnumerator BarrierTimer(float duration)
+    {
+        yield return new WaitForSeconds(duration);
+
+        DisableBarriersRpc();
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void DisableBarriersRpc()
+    {
+        _hostBarrier.SetActive(false);
+        _clientBarrier.SetActive(false);
     }
 
     private IEnumerator SpawnHost(ulong clientId)
     {
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(1f);
 
-        NetworkObject playerObject = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
+        TeleportHost(clientId);
+
+        yield return new WaitForSeconds(0.2f);
+
+        EnablePlayerMovement(clientId, true);
+
+        yield return new WaitForSeconds(1f);
+
+        _loadingScreenBackground.SetActive(false);
+        _loadingIcon.SetActive(false);
+    }
+
+    public void TeleportHost(ulong id)
+    {
+        NetworkObject playerObject = NetworkManager.Singleton.ConnectedClients[id].PlayerObject;
+
+        playerHealthController = playerObject.GetComponent<PlayerHealthController>();
 
         PlayerMovementController playerMovementController = playerObject.GetComponent<PlayerMovementController>();
 
-        playerMovementController.disablingPlayerJumpAndGravity = true;
-        playerMovementController.disablingPlayerMove = true;
+        if (!playerMovementController.disablingPlayerJumpAndGravity)
+        {
+            playerMovementController.disablingPlayerJumpAndGravity = true;
+        }
 
         if (playerObject != null)
         {
             if (playerObject.IsOwner)
             {
                 playerObject.GetComponent<ClientNetworkTransform>().Teleport(hostSpawnPoint.position, playerObject.transform.rotation, playerObject.transform.localScale);
-                Debug.Log("TP server");
             }
         }
+    }
 
+    public void EnablePlayerMovement(ulong id, bool isSpawnMethod)
+    {
+        NetworkObject playerObject = NetworkManager.Singleton.ConnectedClients[id].PlayerObject;
+        PlayerMovementController playerMovementController = playerObject.GetComponent<PlayerMovementController>();
 
-        yield return new WaitForSeconds(0.2f);
+        if (!isSpawnMethod)
+        {
+            StopDeathAnimationClientRpc(playerObject);
+        }
 
         playerMovementController.disablingPlayerJumpAndGravity = false;
         playerMovementController.disablingPlayerMove = false;
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void StopDeathAnimationClientRpc(NetworkObjectReference playerReference)
+    {
+        if (playerReference.TryGet(out NetworkObject playerObject))
+        {
+            PlayerAnimationController playerAnimationController = playerObject.GetComponent<PlayerAnimationController>();
+            PlayerHealthController playerHealthController = playerObject.GetComponent<PlayerHealthController>();
+
+            if (playerAnimationController.CachedComponentNetwork.animator.GetCurrentAnimatorStateInfo(playerAnimationController.CachedComponentNetwork.animator.GetLayerIndex("Movement")).IsName("Death"))
+            {
+                playerAnimationController.CachedComponentNetwork.animator.SetBool("IsDeath", false);
+                playerAnimationController.CachedComponentNetwork.isEnabledAnimatorIK = true;
+            }
+
+            playerHealthController.SetMaxHpServerRpc();
+        }
     }
 
     private IEnumerator SpawnClient(ulong clientId)
     {
         yield return new WaitForSeconds(1f);
-        SpawnPlayerOnServerRpc(clientId);
+        TeleportServerRpc(clientId);
 
-        yield return new WaitForSeconds(0.2f);
-        EnablePlayerMovementClientRpc(clientId);
+        yield return new WaitForSeconds(0.5f);
+        EnablePlayerMovementServerRpc(clientId, true);
     }
 
     [Rpc(SendTo.Server)]
-    private void SpawnPlayerOnServerRpc(ulong clientId)
+    public void TeleportServerRpc(ulong clientId)
     {
-        NetworkObject playerObject = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
-
-        if (playerObject != null)
+        if (NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client))
         {
-            PlayerMovementController playerMovementController = playerObject.GetComponent<PlayerMovementController>();
+            NetworkObject playerObject = client.PlayerObject;
 
-            playerMovementController.disablingPlayerJumpAndGravity = true;
-            playerMovementController.disablingPlayerMove = true;
-
-            TeleportClientRpc(clientId, clientSpawnPoint.position);
-
-            /*if (playerObject.IsOwner)
+            if (playerObject != null)
             {
-                playerObject.GetComponent<ClientNetworkTransform>().Teleport(clientSpawnPoint.position, playerObject.transform.rotation, playerObject.transform.localScale);
-                Debug.Log("TP client");
-            }*/
-        }
+                PlayerMovementController playerMovementController = playerObject.GetComponent<PlayerMovementController>();
 
-        //Debug.Log($"ID: {clientId} | Test1");
+                if (!playerMovementController.disablingPlayerJumpAndGravity)
+                {
+                    playerMovementController.disablingPlayerJumpAndGravity = true;
+                }
+
+                TeleportClientRpc(playerObject, clientSpawnPoint.position);
+            }
+        }
     }
 
     [Rpc(SendTo.ClientsAndHost)]
-    private void TeleportClientRpc(ulong clientId, Vector3 position)
+    public void TeleportClientRpc(NetworkObjectReference playerReference, Vector3 position)
     {
-        NetworkObject playerObject = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
-
-        if (playerObject.IsOwner)
+        if (playerReference.TryGet(out NetworkObject playerObject))
         {
-            playerObject.GetComponent<ClientNetworkTransform>().Teleport(position, playerObject.transform.rotation, playerObject.transform.localScale);
-            Debug.Log("Test");
+            playerHealthController = playerObject.GetComponent<PlayerHealthController>();
+
+            if (playerObject.IsOwner)
+            {
+                PlayerMovementController playerMovementController = playerObject.GetComponent<PlayerMovementController>();
+
+                playerObject.GetComponent<ClientNetworkTransform>().Teleport(position, playerObject.transform.rotation, playerObject.transform.localScale);
+            }
         }
     }
 
     [Rpc(SendTo.Server)]
-    private void EnablePlayerMovementClientRpc(ulong clientId)
+    public void EnablePlayerMovementServerRpc(ulong clientId, bool isSpawnMethod)
     {
-        NetworkObject playerObject = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
-
-        if (playerObject != null)
+        if (NetworkManager.Singleton.ConnectedClients.TryGetValue(clientId, out var client))
         {
-            PlayerMovementController playerMovementController = playerObject.GetComponent<PlayerMovementController>();
+            NetworkObject playerObject = client.PlayerObject;
 
-            playerMovementController.disablingPlayerJumpAndGravity = false;
-            playerMovementController.disablingPlayerMove = false;
+            if (playerObject != null)
+            {
+                EnablePlayerMovementClientRpc(playerObject, isSpawnMethod);
+            }
         }
     }
 
-    /*private IEnumerator SpawnClient(ulong clientId)
+    [Rpc(SendTo.ClientsAndHost)]
+    private void EnablePlayerMovementClientRpc(NetworkObjectReference playerReference, bool isSpawnMethod)
+    {
+        if (playerReference.TryGet(out NetworkObject playerObject))
+        {
+            if (playerObject.IsOwner)
+            {
+                PlayerMovementController playerMovementController = playerObject.GetComponent<PlayerMovementController>();
+
+                if (!isSpawnMethod)
+                {
+                    PlayerAnimationController playerAnimationController = playerObject.GetComponent<PlayerAnimationController>();
+                    PlayerHealthController playerHealthController = playerObject.GetComponent<PlayerHealthController>();
+
+                    if (playerAnimationController.SkinView.CurrentArmatureLocal.animator.GetCurrentAnimatorStateInfo(playerAnimationController.SkinView.CurrentArmatureLocal.animator.GetLayerIndex("Movement")).IsName("Death"))
+                    {
+                        playerAnimationController.SkinView.CurrentArmatureLocal.animator.SetBool("IsDeath", false);
+                        playerAnimationController.SkinView.CurrentArmatureLocal.isEnabledAnimatorIK = true;
+                    }
+
+                    playerHealthController.SetMaxHpServerRpc();
+                    StopDeathAnimationServerRpc(playerObject);
+                }
+
+                playerMovementController.disablingPlayerJumpAndGravity = false;
+                playerMovementController.disablingPlayerMove = false;
+
+                if (_loadingScreenBackground.activeSelf && _loadingIcon.activeSelf)
+                {
+                    StartCoroutine(DisableLoadingScreen());
+                }
+            }
+        }
+    }
+
+    private IEnumerator DisableLoadingScreen()
     {
         yield return new WaitForSeconds(1f);
 
-        NetworkObject playerObject = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject;
+        _loadingScreenBackground.SetActive(false);
+        _loadingIcon.SetActive(false);
+    }
 
-        PlayerMovementController playerMovementController = playerObject.GetComponent<PlayerMovementController>();
-
-        playerMovementController.disablingPlayerJumpAndGravity = true;
-        playerMovementController.disablingPlayerMove = true;
-
-        if (playerObject != null)
+    [Rpc(SendTo.Server)]
+    private void StopDeathAnimationServerRpc(NetworkObjectReference playerReference)
+    {
+        if (playerReference.TryGet(out NetworkObject playerObject))
         {
-            playerObject.GetComponent<ClientNetworkTransform>().Teleport(clientSpawnPoint.position, playerObject.transform.rotation, playerObject.transform.localScale);
+            PlayerAnimationController playerAnimationController = playerObject.GetComponent<PlayerAnimationController>();
+            PlayerHealthController playerHealthController = playerObject.GetComponent<PlayerHealthController>();
+
+            if (playerAnimationController.CachedComponentNetwork.animator.GetCurrentAnimatorStateInfo(playerAnimationController.CachedComponentNetwork.animator.GetLayerIndex("Movement")).IsName("Death"))
+            {
+                playerAnimationController.CachedComponentNetwork.animator.SetBool("IsDeath", false);
+                playerAnimationController.CachedComponentNetwork.isEnabledAnimatorIK= true;
+            }
+
+            playerHealthController.SetMaxHpServerRpc();
         }
-
-        yield return new WaitForSeconds(0.2f);
-
-        playerMovementController.disablingPlayerJumpAndGravity = false;
-        playerMovementController.disablingPlayerMove = false;
-    }*/
+    }
 
     public override void OnDestroy()
     {

@@ -80,7 +80,7 @@ public class SkinContoller : NetworkBehaviour
                         skills.ownerId = OwnerClientId;
                         _playerHealthController.OnDamageTaken = null;
 
-                        UIManager.Instance.Steal.ActivateCooldown(_stealCooldown);
+                        UIReferencesManager.Instance.Steal.ActivateCooldown(_stealCooldown);
                         _lastStealTime = Time.time;
                     }
 

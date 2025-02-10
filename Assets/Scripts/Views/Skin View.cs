@@ -199,9 +199,9 @@ public class SkinView : NetworkBehaviour
             }
         }
 
-        GameObject spawnedStoneburst = _transformationSmokePool.Get(transformationSmokeSpawnPoint);
+        GameObject spawnedTransformationSmoke = _transformationSmokePool.Get(transformationSmokeSpawnPoint);
 
-        StartCoroutine(ReleaseSmoke(1f, () => _transformationSmokePool.Release(spawnedStoneburst)));
+        StartCoroutine(ReleaseSmoke(1f, () => _transformationSmokePool.Release(spawnedTransformationSmoke)));
     }
 
     [Rpc(SendTo.Server)]
