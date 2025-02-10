@@ -2,12 +2,10 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using System;
 using Unity.Netcode;
-using TMPro;
-using System.Collections;
-using Unity.VisualScripting;
 
 [RequireComponent(typeof(CharacterController))]
 [RequireComponent(typeof(PlayerInput))]
+
 public class PlayerMovementController : NetworkBehaviour
 {
     [Header("Player")]
@@ -22,7 +20,6 @@ public class PlayerMovementController : NetworkBehaviour
 
     [Space(20)]
     public float gravity = -15f;
-
     public float fallTimeout = 0.15f;
 
     [Space(20)]
@@ -79,6 +76,9 @@ public class PlayerMovementController : NetworkBehaviour
 
     [HideInInspector] public StatusEffectsController<MovementStatsNetwork, MovementStatsLocal> statusEffectsController;
 
+    [HideInInspector] public bool disablingPlayerMove = true;
+    [HideInInspector] public bool disablingPlayerJumpAndGravity = true;
+
     //private bool rotateOnMove = true;
     //private bool isMovementDisabled = false;
 
@@ -96,8 +96,6 @@ public class PlayerMovementController : NetworkBehaviour
     {
         Camera camera = GetComponentInChildren<Camera>();
         mainCamera = camera;
-
-        Application.targetFrameRate = 60;
     }
 
     private void Start()
@@ -148,7 +146,7 @@ public class PlayerMovementController : NetworkBehaviour
         if (!IsOwner)
             return;
 
-        if (!_skinContoller.skills.disablingPlayerJumpAndGravity)
+        if (!disablingPlayerJumpAndGravity)
         {
             JumpAndGravity();
         }
@@ -159,13 +157,21 @@ public class PlayerMovementController : NetworkBehaviour
         if (!IsOwner)
             return;
 
-        if (!_skinContoller.skills.disablingPlayerMove && !currentMovementStats.isStuned.Value)
+        if (!disablingPlayerMove && !currentMovementStats.isStuned.Value)
         {
             Move();
         }
 
         //Debug.Log(currentMovementStats.moveSpeed.Value);
-        
+
+        /*if (inputs.jump && !currentMovementStats.isStuned.Value)
+        {
+            if (_skinContoller.skinView.CurrentArmatureNetwork.Value.TryGet(out NetworkObject armatureNetworkObject))
+            {
+                armatureNetworkObject.GetComponent<PlayerArmature>().animator.SetTrigger("Jump");
+            }
+        }   */ 
+
         GroundedCheck(); 
     }
 
@@ -288,9 +294,17 @@ public class PlayerMovementController : NetworkBehaviour
         }
         else
         {
-            if (!_skinContoller.skills.disablingPlayerMove)
+            if (!disablingPlayerMove)
             {
-                inputs.jump = false;
+                if (inputs.jump != false)
+                {
+                    inputs.jump = false;
+
+                    if (!IsServer)
+                    {
+                        DisableJumpRpc();
+                    }
+                }
             }
 
             if (verticalVelocity < _terminalVelocity)
@@ -298,6 +312,13 @@ public class PlayerMovementController : NetworkBehaviour
                 verticalVelocity += gravity * Time.deltaTime;
             }
         }
+    }
+
+    [Rpc(SendTo.Server)] 
+    private void DisableJumpRpc()
+    {
+        NetworkManager.Singleton.ConnectedClients[OwnerClientId].PlayerObject.GetComponent<Inputs>().jump = false;
+        Debug.Log(NetworkManager.Singleton.ConnectedClients[OwnerClientId].PlayerObject.GetComponent<Inputs>().jump);
     }
 
     public void ResetGravityEffect()

@@ -13,6 +13,8 @@ public class JoinUIView : MonoBehaviour
     [SerializeField] private Image _loadingIcon;
     [SerializeField] private TMP_Text _errorText;
     [SerializeField] private Button _exit;
+    [SerializeField] private Button _create;
+    [SerializeField] private Button _join;
 
 
     public void DislayJoinUI()
@@ -24,6 +26,12 @@ public class JoinUIView : MonoBehaviour
         _loadingIcon.gameObject.SetActive(false);
         _errorText.gameObject.SetActive(true);
         _exit.gameObject.SetActive(true);
+    }
+
+    public void HideStartUI()
+    {
+        _create.gameObject.SetActive(false);
+        _join.gameObject.SetActive(false);
     }
 
     public TMP_Text GetErrorText()

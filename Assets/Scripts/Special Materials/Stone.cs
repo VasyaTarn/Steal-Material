@@ -46,6 +46,8 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
 
     private void Start()
     {
+        materialType = Type.Stone;
+
         _bulletPrefab = projectilePrefabs[projectilePrefabKey];
         _wall = Resources.Load<GameObject>("Stone/Wall");
         _smoke = Resources.Load<GameObject>("Stone/Smoke");
@@ -239,7 +241,7 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
         //Anim
         yield return new WaitForSeconds(0.2f);
         _canDash = false;
-        disablingPlayerMove = true;
+        playerMovementController.disablingPlayerMove = true;
         _dashVelocity = playerMovementController.transform.forward * _dashingPower;
         float startTime = Time.time;
 
@@ -249,7 +251,7 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
             yield return null;
         }
 
-        disablingPlayerMove = false;
+        playerMovementController.disablingPlayerMove = false;
         _canDash = true;
     }
 
@@ -452,7 +454,7 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
         else
         {
             playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed / 2;
-            EnableDefenseRpc();
+            EnableDefenseRpc(ownerId);
         }
 
         playerHealthController.EnableResistance(0.5f);
@@ -467,22 +469,24 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
         else
         {
             playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed;
-            DisableDefenseRpc();
+            DisableDefenseRpc(ownerId);
         }
 
         playerHealthController.DisableResistance();
     }
 
     [Rpc(SendTo.Server)]
-    private void EnableDefenseRpc()
+    private void EnableDefenseRpc(ulong ownerId)
     {
-        playerSkillsController.enemyMovementController.currentMovementStats.moveSpeed.Value = playerSkillsController.enemyMovementController.baseMovementStats.moveSpeed / 2;
+        PlayerMovementController player = NetworkManager.Singleton.ConnectedClients[ownerId].PlayerObject.GetComponent<PlayerMovementController>();
+        player.currentMovementStats.moveSpeed.Value = player.baseMovementStats.moveSpeed / 2;
     }
 
     [Rpc(SendTo.Server)]
-    private void DisableDefenseRpc()
+    private void DisableDefenseRpc(ulong ownerId)
     {
-        playerSkillsController.enemyMovementController.currentMovementStats.moveSpeed.Value = playerSkillsController.enemyMovementController.baseMovementStats.moveSpeed;
+        PlayerMovementController player = NetworkManager.Singleton.ConnectedClients[ownerId].PlayerObject.GetComponent<PlayerMovementController>();
+        player.currentMovementStats.moveSpeed.Value = player.baseMovementStats.moveSpeed;
     }
 
     #endregion

@@ -31,7 +31,6 @@ public class BasicProjectile : BulletProjectile
             if (healthController != null)
             {
                 healthController.TakeDamage(damage);
-                Debug.Log("Test");
             }
         }
 
