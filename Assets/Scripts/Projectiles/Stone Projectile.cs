@@ -1,3 +1,4 @@
+using DG.Tweening;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,6 +8,31 @@ using UnityEngine;
 
 public class StoneProjectile : BulletProjectile
 {
+    private Tween _rotationTween;
+
+    private void OnEnable()
+    {
+        if (_rotationTween == null)
+        {
+            _rotationTween = transform.DORotate(new Vector3(360, 360, 360), 2f, RotateMode.FastBeyond360)
+                .SetEase(Ease.Linear)
+                .SetLoops(-1, LoopType.Restart);
+        }
+        else
+        {
+            _rotationTween.Play();
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (_rotationTween != null)
+        {
+            _rotationTween.Kill();
+            _rotationTween = null;
+        }
+    }
+
     private void OnTriggerEnter(Collider other)
     {
         OnTrigger(other);

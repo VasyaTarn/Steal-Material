@@ -32,7 +32,7 @@ public class EnemyManager : NetworkBehaviour
         {
             GameObject playerObject = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject.gameObject;
 
-            if (playerObject != null)
+            if (playerObject != null && players.Count < 2)
             {
                 players.Add(playerObject);
             }

@@ -10,8 +10,11 @@ using Unity.Networking.Transport.Relay;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.Threading.Tasks;
+using System;
+using System.Collections.Generic;
+using System.Collections;
 
-public class Relay : MonoBehaviour
+public class Relay : NetworkBehaviour
 {
     [SerializeField] private TMP_InputField _inputField;
     [SerializeField] private JoinUIView _joinUIView;
@@ -19,9 +22,9 @@ public class Relay : MonoBehaviour
 
     private async void Start()
     {
-        //NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
-
         await UnityServices.InitializeAsync();
+
+        //NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
 
         AuthenticationService.Instance.SignedIn += () =>
         {
@@ -40,7 +43,6 @@ public class Relay : MonoBehaviour
 
             string joinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
 
-
             RelayServerData relayServerData = new RelayServerData(allocation, "dtls");
             NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(relayServerData);
 
@@ -51,6 +53,8 @@ public class Relay : MonoBehaviour
             await Task.Delay(100);
 
             NetworkManager.Singleton.StartHost();
+
+            Debug.Log(joinCode);
 
             CodeDisplayer.displayCode(joinCode);
         }
@@ -72,6 +76,14 @@ public class Relay : MonoBehaviour
 
                 RelayServerData relayServerData = new RelayServerData(joinAllocation, "dtls");
                 NetworkManager.Singleton.GetComponent<UnityTransport>().SetRelayServerData(relayServerData);
+
+                /*if (NetworkManager.Singleton.ConnectedClients.Count >= 2)
+                {
+                    Debug.Log("Server full! Cannot join.");
+                    _joinUIView.DislayJoinUI();
+                    _joinUIView.GetErrorText().text = "Lobby is full";
+                    return;
+                }*/
 
                 await Task.Delay(1000);
 
@@ -96,7 +108,23 @@ public class Relay : MonoBehaviour
 
     /*private void OnClientConnected(ulong clientId)
     {
-        Debug.Log("Test");
+        if (NetworkManager.Singleton.IsServer)
+        {
+            if (NetworkManager.Singleton.ConnectedClientsList.Count > 1)
+            {
+                Debug.Log("TEST");
+
+                RequestClientDisconnectRpc(clientId);
+            }
+        }
+    }
+
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void RequestClientDisconnectRpc(ulong clientId)
+    {
+        Debug.Log("OwnerClientId: " + OwnerClientId);
+        Debug.Log("ClientId: " + clientId);
     }*/
 
 }

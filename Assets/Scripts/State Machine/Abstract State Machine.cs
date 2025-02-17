@@ -8,6 +8,8 @@ public class AbstractStateMachine : MonoBehaviour
 
     private AbstractState _currentState;
 
+    public SummonedEntity summon;
+
 
     private void Awake()
     {

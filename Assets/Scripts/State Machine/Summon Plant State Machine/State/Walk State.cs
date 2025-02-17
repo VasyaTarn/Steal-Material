@@ -1,35 +1,60 @@
-using System.Collections;
-using System.Collections.Generic;
-using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.AI;
-using static UnityEngine.UI.GridLayoutGroup;
 
 public class WalkState : AbstractState
 {
     [SerializeField] private NavMeshAgent _agent;
+    [SerializeField] private Animator _animator;
 
+    [SerializeField] private AbstractStateMachine stateMachine;
+
+    private readonly int _walkStateHash = Animator.StringToHash("Walk");
+
+
+    public override void StartState()
+    {
+        base.StartState();
+    }
 
     private void Update()
     {
         if (IsClient && !IsServer)
         {
-            if (!summon.isNetworkObject)
+            _animator.CrossFade(_walkStateHash, 0f);
+
+            if (!stateMachine.summon.isNetworkObject)
             {
-                var target = summon.owner.enemy;
+                var target = stateMachine.summon.owner.enemy;
+
                 if (target != null)
                 {
                     _agent.SetDestination(target.transform.position);
+                }
+                else
+                {
+                    _agent.ResetPath();
                 }
             }
         }
         else
         {
-            var target = summon.owner.enemy;
+            _animator.CrossFade(_walkStateHash, 0f);
+
+            var target = stateMachine.summon.owner.enemy;
+
             if (target != null)
             {
                 _agent.SetDestination(target.transform.position);
             }
+            else
+            {
+                _agent.ResetPath();
+            }
         }
+    }
+
+    public override void ExitState()
+    {
+        base.ExitState();
     }
 }

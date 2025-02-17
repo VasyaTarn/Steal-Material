@@ -1,7 +1,9 @@
+using System.Globalization;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Unity.Netcode;
 
-public class Inputs : MonoBehaviour
+public class Inputs : NetworkBehaviour
 {
     [Header("Character Input Values")]
     public Vector2 move;
@@ -23,6 +25,7 @@ public class Inputs : MonoBehaviour
 
     private void Update()
     {
+        if (!IsOwner) return;
         ResetTriggers();
     }
 
@@ -41,67 +44,155 @@ public class Inputs : MonoBehaviour
         _specialTriggered = false;
     }
 
-    public void OnMove(InputValue value) => move = value.Get<Vector2>();
+    public void OnMove(InputValue value)
+    {
+        if (!IsOwner) return;
+        move = value.Get<Vector2>();
+        SendMoveServerRpc(move);
+    }
 
-    public void OnLook(InputValue value) => look = value.Get<Vector2>();
+    public void OnLook(InputValue value)
+    {
+        if (!IsOwner) return;
+        look = value.Get<Vector2>();
+        SendLookServerRpc(look);
+    }
 
     public void OnJump(InputValue value)
     {
-        if(!PauseScreen.isPause)
+        if (!IsOwner) return;
+        if (!PauseScreen.isPause)
         {
             jump = value.isPressed;
+            SendJumpServerRpc(jump);
         }
-    }    
+    }
 
     public void OnSteal(InputValue value)
     {
+        if (!IsOwner) return;
         if (value.isPressed)
+        {
             _stealTriggered = true;
+            SendStealServerRpc();
+        }
     }
 
     public void OnMeleeAttack(InputValue value)
     {
+        if (!IsOwner) return;
         if (value.isPressed)
+        {
             _meleeAttackTriggered = true;
+            SendMeleeAttackServerRpc();
+        }
     }
 
-    public void OnAim(InputValue value) => aim = value.isPressed;
+    public void OnAim(InputValue value)
+    {
+        if (!IsOwner) return;
+        aim = value.isPressed;
+        SendAimServerRpc(aim);
+    }
 
-    public void OnShoot(InputValue value) => shoot = value.isPressed;
+    public void OnShoot(InputValue value)
+    {
+        if (!IsOwner) return;
+        shoot = value.isPressed;
+        SendShootServerRpc(shoot);
+    }
 
     public void OnMovementSkill(InputValue value)
     {
+        if (!IsOwner) return;
         if (value.isPressed)
+        {
             _movementSkillTriggered = true;
+            SendMovementSkillServerRpc();
+        }
     }
 
     public void OnDefense(InputValue value)
     {
+        if (!IsOwner) return;
         if (value.isPressed)
+        {
             _defenseTriggered = true;
+            SendDefenseServerRpc();
+        }
     }
 
     public void OnSpecial(InputValue value)
     {
+        if (!IsOwner) return;
         if (value.isPressed)
+        {
             _specialTriggered = true;
+            SendSpecialServerRpc();
+        }
     }
 
+    // --- ServerRpc методы ---
 
+    [ServerRpc]
+    private void SendMoveServerRpc(Vector2 moveValue)
+    {
+        move = moveValue;
+    }
 
+    [ServerRpc]
+    private void SendLookServerRpc(Vector2 lookValue)
+    {
+        look = lookValue;
+    }
 
+    [ServerRpc]
+    private void SendJumpServerRpc(bool isJumping)
+    {
+        jump = isJumping;
+    }
 
+    [ServerRpc]
+    private void SendStealServerRpc()
+    {
+        steal = true;
+    }
 
+    [ServerRpc]
+    private void SendMeleeAttackServerRpc()
+    {
+        meleeAttack = true;
+    }
 
+    [ServerRpc]
+    private void SendAimServerRpc(bool isAiming)
+    {
+        aim = isAiming;
+    }
 
+    [ServerRpc]
+    private void SendShootServerRpc(bool isShooting)
+    {
+        shoot = isShooting;
+    }
 
+    [ServerRpc]
+    private void SendMovementSkillServerRpc()
+    {
+        movementSkill = true;
+    }
 
+    [ServerRpc]
+    private void SendDefenseServerRpc()
+    {
+        defense = true;
+    }
 
-
-
-
-
-
+    [ServerRpc]
+    private void SendSpecialServerRpc()
+    {
+        special = true;
+    }
 
 
 
@@ -113,180 +204,107 @@ public class Inputs : MonoBehaviour
     public Vector2 move;
     public Vector2 look;
     public bool jump;
-
     public bool steal;
-    private bool stealPressed;
-
     public bool meleeAttack;
-    private bool meleeAttackPressed;
-
     public bool aim;
-
     public bool shoot;
-
     public bool movementSkill;
-    private bool movementSkillPressed;
-
     public bool defense;
-    private bool defensePressed;
-
     public bool special;
-    private bool specialPressed;
+
+    private bool _stealTriggered;
+    private bool _meleeAttackTriggered;
+    private bool _movementSkillTriggered;
+    private bool _defenseTriggered;
+    private bool _specialTriggered;
 
     private void Update()
     {
-        steal = false;
+        if (!IsOwner) return;
 
-        if (stealPressed)
-        {
-            steal = true;
-            stealPressed = false;
-        }
+        ResetTriggers();
+    }
 
-        meleeAttack = false;
+    private void ResetTriggers()
+    {
+        steal = _stealTriggered;
+        meleeAttack = _meleeAttackTriggered;
+        movementSkill = _movementSkillTriggered;
+        defense = _defenseTriggered;
+        special = _specialTriggered;
 
-        if (meleeAttackPressed)
-        {
-            meleeAttack = true;
-            meleeAttackPressed = false;
-        }
-
-        movementSkill = false;
-
-        if (movementSkillPressed)
-        {
-            movementSkill = true;
-            movementSkillPressed = false;
-        }
-
-        defense = false;
-
-        if (defensePressed)
-        {
-            defense = true;
-            defensePressed = false;
-        }
-
-        special = false;
-
-        if(specialPressed)
-        {
-            special = true;
-            specialPressed = false;
-        }
+        _stealTriggered = false;
+        _meleeAttackTriggered = false;
+        _movementSkillTriggered = false;
+        _defenseTriggered = false;
+        _specialTriggered = false;
     }
 
     public void OnMove(InputValue value)
     {
-        MoveInput(value.Get<Vector2>());
+        if (!IsOwner) return;
+        move = value.Get<Vector2>();
     }
+
     public void OnLook(InputValue value)
     {
-        LookInput(value.Get<Vector2>());
+        if (!IsOwner) return;
+        look = value.Get<Vector2>();
     }
 
     public void OnJump(InputValue value)
     {
-        JumpInput(value.isPressed);
-    }
+        if (!IsOwner) return;
+        if (!PauseScreen.isPause)
+        {
+            jump = value.isPressed;
+        }
+    }    
 
     public void OnSteal(InputValue value)
     {
-        StealInput(value.isPressed);
+        if (!IsOwner) return;
+        if (value.isPressed)
+            _stealTriggered = true;
     }
 
     public void OnMeleeAttack(InputValue value)
     {
-        MeleeAttackInput(value.isPressed);
+        if (!IsOwner) return;
+        if (value.isPressed)
+            _meleeAttackTriggered = true;
     }
 
     public void OnAim(InputValue value)
     {
-        AimInput(value.isPressed);
+        if (!IsOwner) return;
+        aim = value.isPressed;
     }
 
     public void OnShoot(InputValue value)
     {
-        ShootInput(value.isPressed);
+        if (!IsOwner) return;
+        shoot = value.isPressed;
     }
 
     public void OnMovementSkill(InputValue value)
     {
-        MovementSkillInput(value.isPressed);
+        if (!IsOwner) return;
+        if (value.isPressed)
+            _movementSkillTriggered = true;
     }
 
     public void OnDefense(InputValue value)
     {
-        DefenseInput(value.isPressed);
+        if (!IsOwner) return;
+        if (value.isPressed)
+            _defenseTriggered = true;
     }
 
     public void OnSpecial(InputValue value)
     {
-        SpecialInput(value.isPressed);
-    }
-
-    public void MoveInput(Vector2 newMoveDirection)
-    {
-        move = newMoveDirection;
-    }
-
-    public void LookInput(Vector2 newLookDirection)
-    {
-        look = newLookDirection;
-    }
-
-    public void JumpInput(bool newJumpState)
-    {
-        jump = newJumpState;
-    }
-
-    public void StealInput(bool newStealState)
-    {
-        if (newStealState)
-        {
-            stealPressed = true;
-        }
-    }
-
-    public void MeleeAttackInput(bool newStealState)
-    {
-        if (newStealState)
-        {
-            meleeAttackPressed = true;
-        }
-    }
-
-    public void AimInput(bool newAimState)
-    {
-        aim = newAimState;
-    }
-
-    public void ShootInput(bool newShootState)
-    {
-        shoot = newShootState;
-    }
-
-    public void MovementSkillInput(bool newMovementSkillState)
-    {
-        if (newMovementSkillState)
-        {
-            movementSkillPressed = true;
-        }
-    }
-
-    public void DefenseInput(bool newDefenseState)
-    {
-        if(newDefenseState)
-        {
-            defensePressed = true;
-        }
-    }
-
-    public void SpecialInput(bool newSpecialState)
-    {
-        if(newSpecialState)
-        {
-            specialPressed = true;
-        }
+        if (!IsOwner) return;
+        if (value.isPressed)
+            _specialTriggered = true;
     }*/
 }

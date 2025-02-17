@@ -1,5 +1,8 @@
+using System;
+using System.Collections;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.VFX;
 
 public class Basic : MaterialSkills, ISkinMaterialChanger
 {
@@ -7,6 +10,11 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
 
     private int _initialProjctilePoolSize = 10;
     private LocalObjectPool _projectilePool;
+
+    private GameObject _claw;
+
+    private int _initialClawPoolSize = 1;
+    private LocalObjectPool _clawPool;
 
     private SkinContoller _enemySkinController;
 
@@ -25,8 +33,12 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
 
     private void Start()
     {
+        materialType = Type.Basic;
+
         _layerForSpecial = LayerMask.GetMask("Player");
         _bulletPrefab = projectilePrefabs[projectilePrefabKey];
+
+        _claw = Resources.Load<GameObject>("Basic/ClawAttack");
     }
 
     #region Melee
@@ -38,6 +50,13 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
             DisableDefenseDuringOtherSkills();
         }
 
+        if (!IsServer)
+        {
+            SpawnClawLocal(playerObjectReferences.basicMeleePointPosition.position);
+        }
+
+        SpawnClawServerRpc(playerObjectReferences.basicMeleePointPosition.position, ownerId);
+
         Collider[] hitColliders = Physics.OverlapSphere(playerObjectReferences.basicMeleePointPosition.position, 0.5f, LayerMask.GetMask("Player"));
 
         foreach (Collider collider in hitColliders)
@@ -46,9 +65,84 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
 
             if (playerNetworkObject != null && playerNetworkObject.OwnerClientId != ownerId)
             {
+
                 playerSkillsController.enemyHealthController.TakeDamage(10);
             }
         }
+    }
+
+    private void SpawnClawLocal(Vector3 clawSpawnPoint)
+    {
+        if (_clawPool == null)
+        {
+            if (_claw != null)
+            {
+                _clawPool = new LocalObjectPool(_claw, _initialClawPoolSize);
+            }
+        }
+
+        GameObject spawnedClaw = _clawPool.Get(clawSpawnPoint);
+
+        spawnedClaw.transform.rotation = Quaternion.Euler(40f, 0f, -90f);
+
+        Vector3 directionToPlayer = Player.transform.position - clawSpawnPoint;
+
+        directionToPlayer.y = 0;
+
+        if (directionToPlayer.sqrMagnitude > 0.001f)
+        {
+            float targetYRotation = Mathf.Atan2(directionToPlayer.x, directionToPlayer.z) * Mathf.Rad2Deg;
+
+            Quaternion finalRotation = Quaternion.Euler(90f, targetYRotation, 90f);
+
+            spawnedClaw.transform.rotation = finalRotation;
+        }
+
+        StartCoroutine(ReleaseStaticObject(0.5f, () => _clawPool.Release(spawnedClaw)));
+    }
+
+    [Rpc(SendTo.Server)]
+    private void SpawnClawServerRpc(Vector3 clawNetworkSpawnPoint, ulong ownerId)
+    {
+        NetworkObject clawNetwork = NetworkObjectPool.Singleton.GetNetworkObject(_claw, clawNetworkSpawnPoint);
+        clawNetwork.Spawn();
+
+        if (ownerId != 0)
+        {
+            clawNetwork.NetworkHide(ownerId);
+        }
+
+        clawNetwork.transform.rotation = Quaternion.Euler(40f, 0f, -90f);
+
+        Vector3 directionToPlayer = NetworkManager.Singleton.ConnectedClients[ownerId].PlayerObject.transform.position - clawNetworkSpawnPoint;
+
+        directionToPlayer.y = 0;
+
+        if (directionToPlayer.sqrMagnitude > 0.001f)
+        {
+            float targetYRotation = Mathf.Atan2(directionToPlayer.x, directionToPlayer.z) * Mathf.Rad2Deg;
+
+            Quaternion finalRotation = Quaternion.Euler(90f, targetYRotation, 90f);
+
+            clawNetwork.transform.rotation = finalRotation;
+        }
+
+        StartCoroutine(ReleaseStaticObject(0.5f, () =>
+        {
+            if (IsServer)
+            {
+                if (clawNetwork.IsSpawned)
+                {
+                    clawNetwork.Despawn();
+                }
+            }
+        }));
+    }
+
+    private IEnumerator ReleaseStaticObject(float duration, Action releaseAction)
+    {
+        yield return new WaitForSeconds(duration);
+        releaseAction?.Invoke();
     }
 
     #endregion
@@ -84,7 +178,41 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
 
         GameObject projectile = _projectilePool.Get(projectileSpawnPoint);
 
-        projectile.GetComponent<BulletProjectile>().Movement(aimDir, () => _projectilePool.Release(projectile));
+        if (projectile != null && projectile.transform.childCount > 0)
+        {
+            for (int i = 0; i < projectile.transform.childCount; i++)
+            {
+                if (projectile.transform.GetChild(i).TryGetComponent(out TrailRenderer trailRenderer))
+                {
+                    if (!trailRenderer.enabled)
+                    {
+                        trailRenderer.enabled = true;
+                    }
+                }
+            }
+        }
+
+        projectile.GetComponent<BulletProjectile>().Movement(aimDir, () =>
+        {
+            if (projectile != null && projectile.transform.childCount > 0)
+            {
+                for (int i = 0; i < projectile.transform.childCount; i++)
+                {
+                    if (projectile.transform.GetChild(i).TryGetComponent(out TrailRenderer trailRenderer))
+                    {
+                        trailRenderer.Clear();
+                        trailRenderer.enabled = false;
+                    }
+
+                    if (projectile.transform.GetChild(i).TryGetComponent(out VisualEffect visualEffect))
+                    {
+                        visualEffect.Stop();
+                    }
+                }
+            }
+
+            StartCoroutine(DelayRelease(projectile, 0.2f));
+        });
     }
 
     [Rpc(SendTo.Server)]
@@ -100,6 +228,22 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
         {
             projectile.NetworkHide(ownerId);
         }
+
+        if (projectile != null && projectile.transform.childCount > 0)
+        {
+            for (int i = 0; i < projectile.transform.childCount; i++)
+            {
+                if (projectile.transform.GetChild(i).TryGetComponent(out TrailRenderer trailRenderer))
+                {
+                    if (!trailRenderer.enabled)
+                    {
+                        trailRenderer.enabled = true;
+                    }
+                }
+            }
+        }
+
+
 
         if (NetworkManager.Singleton.ConnectedClients.TryGetValue(ownerId, out NetworkClient networkClient))
         {
@@ -122,10 +266,42 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
                             Physics.IgnoreCollision(projectileCollider, characterController, false);
                         }
 
-                        projectile.Despawn();
+                        if (projectile != null && projectile.transform.childCount > 0)
+                        {
+                            for (int i = 0; i < projectile.transform.childCount; i++)
+                            {
+                                if (projectile.transform.GetChild(i).TryGetComponent(out TrailRenderer trailRenderer))
+                                {
+                                    trailRenderer.Clear();
+                                    trailRenderer.enabled = false;
+                                }
+
+                                if(projectile.transform.GetChild(i).TryGetComponent(out VisualEffect visualEffect))
+                                {
+                                    visualEffect.Stop();
+                                }
+                            }
+                        }
+
+                        StartCoroutine(DelayDespawn(projectile, 0.2f));
                     }
                 }
             });
+        }
+    }
+
+    private IEnumerator DelayRelease(GameObject projectile, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        _projectilePool.Release(projectile);
+    }
+
+    private IEnumerator DelayDespawn(NetworkObject projectile, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (projectile.IsSpawned)
+        {
+            projectile.Despawn();
         }
     }
 
@@ -166,28 +342,32 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
                     playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed;
                 }
 
-                SwitchingSprintStatusRpc(_sprintStatus);
+                SwitchingSprintStatusRpc(_sprintStatus, ownerId);
             }
         }
     }
 
     [Rpc(SendTo.Server)]
-    private void SwitchingSprintStatusRpc(bool sprintStatus)
+    private void SwitchingSprintStatusRpc(bool sprintStatus, ulong ownerId)
     {
+        PlayerMovementController player = NetworkManager.Singleton.ConnectedClients[ownerId].PlayerObject.GetComponent<PlayerMovementController>();
+
         if (sprintStatus)
         {
-            playerSkillsController.enemyMovementController.currentMovementStats.moveSpeed.Value = playerSkillsController.enemyMovementController.baseMovementStats.moveSpeed * 2;
+            player.currentMovementStats.moveSpeed.Value = player.baseMovementStats.moveSpeed * 2;
         }
         else
         {
-            playerSkillsController.enemyMovementController.currentMovementStats.moveSpeed.Value = playerSkillsController.enemyMovementController.baseMovementStats.moveSpeed;
+            player.currentMovementStats.moveSpeed.Value = player.baseMovementStats.moveSpeed;
         }
     }
 
     [Rpc(SendTo.Server)]
-    private void DisableSprintRpc()
+    private void DisableSprintRpc(ulong ownerId)
     {
-        playerSkillsController.enemyMovementController.currentMovementStats.moveSpeed.Value = playerSkillsController.enemyMovementController.baseMovementStats.moveSpeed;
+        PlayerMovementController player = NetworkManager.Singleton.ConnectedClients[ownerId].PlayerObject.GetComponent<PlayerMovementController>();
+
+        player.currentMovementStats.moveSpeed.Value = player.baseMovementStats.moveSpeed;
     }
 
     #endregion
@@ -297,7 +477,7 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
             if (_enemySkinController.skinMaterialNetworkVar.Value.TryGet(out NetworkObject networkObject))
             {
                 GameObject currentSkinMaterial = networkObject.gameObject;
-                UIManager.Instance.GetEnemyMaterialDisplay().text = currentSkinMaterial.name;
+                UIReferencesManager.Instance.EnemyMaterialDisplay.text = "Enemy:\n" + currentSkinMaterial.name;
             }
         }
     }
@@ -318,8 +498,10 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
             {
                 playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed;
 
-                DisableSprintRpc();
+                DisableSprintRpc(ownerId);
             }
         }
+
+        UIReferencesManager.Instance.EnemyMaterialDisplay.text = "";
     }
 }
