@@ -20,8 +20,9 @@ public class UIReferencesManager : MonoBehaviour
     [SerializeField] private Image _healthbarImage;
 
     [Header("Score Bar")]
-    [SerializeField] private TMP_Text _hostScore;
-    [SerializeField] private TMP_Text _clientScore;
+    [SerializeField] private Image _hostScore;
+    [SerializeField] private Image _clientScore;
+    [SerializeField] private Image _topCapturePointStatus;
 
     public Melee Melee => _melee;
     public Movement Movement => _movement;
@@ -30,8 +31,9 @@ public class UIReferencesManager : MonoBehaviour
     public Steal Steal => _steal;
     public Image HealthbarImage => _healthbarImage;
     public TMP_Text EnemyMaterialDisplay => _enemyMaterialDisplay;
-    public TMP_Text HostScore => _hostScore;
-    public TMP_Text ClientScore => _clientScore;
+    public Image HostScore => _hostScore;
+    public Image ClientScore => _clientScore;
+    public Image TopCapturePointStatus => _topCapturePointStatus;
 
 
     [Inject]

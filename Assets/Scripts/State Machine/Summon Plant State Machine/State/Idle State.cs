@@ -17,7 +17,7 @@ public class IdleState : AbstractState
 
     private void Update()
     {
-        _animator.CrossFade(_idleStateHash, 0.25f);
+        _animator.CrossFade(_idleStateHash, 0f);
     }
 
     public override void ExitState()

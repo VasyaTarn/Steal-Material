@@ -8,6 +8,9 @@ public class ToWalkTransition : AbstractTransition
 
     private void Update()
     {
-        
+        if (stateMachine.summon.owner.enemy != null)
+        {
+            shouldTransition = true;
+        }
     }
 }

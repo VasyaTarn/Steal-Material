@@ -20,25 +20,35 @@ public class WalkState : AbstractState
     {
         if (IsClient && !IsServer)
         {
+            _animator.CrossFade(_walkStateHash, 0f);
+
             if (!stateMachine.summon.isNetworkObject)
             {
                 var target = stateMachine.summon.owner.enemy;
 
                 if (target != null)
                 {
-                    _animator.CrossFade(_walkStateHash, 0.25f);
                     _agent.SetDestination(target.transform.position);
+                }
+                else
+                {
+                    _agent.ResetPath();
                 }
             }
         }
         else
         {
+            _animator.CrossFade(_walkStateHash, 0f);
+
             var target = stateMachine.summon.owner.enemy;
 
             if (target != null)
             {
-                _animator.CrossFade(_walkStateHash, 0.25f);
                 _agent.SetDestination(target.transform.position);
+            }
+            else
+            {
+                _agent.ResetPath();
             }
         }
     }

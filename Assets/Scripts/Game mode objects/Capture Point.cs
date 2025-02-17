@@ -28,6 +28,7 @@ public class CapturePoint : NetworkBehaviour
     private bool _isLockUp = false;
 
     public event Action<ulong> OnPointCaptured;
+    public event Action<ulong> OnPointUncaptured;
 
     [SerializeField] private CaptureProgressBar _captureProgressBar;
 
@@ -73,7 +74,7 @@ public class CapturePoint : NetworkBehaviour
         {
             _decreaseCorotine = StartCoroutine(DecreasePoints());
         }
-        else if (_units.count.Value > 0 && _units.ownerId.Value == ownerId)
+        else if (_units.count.Value > 0 && _units.ownerId.Value == ownerId && _units.count.Value < _maxScore)
         {
             _increaseCorotine = StartCoroutine(IncreasePoints());
         }
@@ -149,7 +150,22 @@ public class CapturePoint : NetworkBehaviour
             {
                 SpawnPointWaveServerRpc(transform.position, _units.ownerId.Value, PointWaveType.Red);
             }
+
+            SetTopCapturePointStatusRpc(_units.ownerId.Value);
         }    
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void SetTopCapturePointStatusRpc(ulong ownerId)
+    {
+        if(ownerId == 0)
+        {
+            UIReferencesManager.Instance.TopCapturePointStatus.color = Color.blue;
+        }
+        else
+        {
+            UIReferencesManager.Instance.TopCapturePointStatus.color = Color.red;
+        }
     }
 
     [Rpc(SendTo.Server)]
@@ -157,7 +173,7 @@ public class CapturePoint : NetworkBehaviour
     {
         if (_units.count.Value < _maxScore)
         {
-            _units.count.Value++;
+            _units.count.Value += 50;
 
             _captureProgressBar.ProgressBarImage.fillAmount = _units.count.Value / _maxScore;
         }
@@ -188,6 +204,8 @@ public class CapturePoint : NetworkBehaviour
             yield return new WaitForSeconds(0.2f);
         }
 
+        OnPointUncaptured?.Invoke(_units.ownerId.Value);
+
         if (_players.Count > _minScore)
         {
             SetNewOwnerServerRpc(_players.Keys.FirstOrDefault());
@@ -200,7 +218,7 @@ public class CapturePoint : NetworkBehaviour
     {
         if (_units.count.Value > 0)
         {
-            _units.count.Value--;
+            _units.count.Value -= 50;
             _captureProgressBar.ProgressBarImage.fillAmount = _units.count.Value / _maxScore;
         }
     }

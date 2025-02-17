@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class GameScoreManager : NetworkBehaviour
 {
@@ -12,13 +13,31 @@ public class GameScoreManager : NetworkBehaviour
     private PlayerHealthController _hostHealthController;
     private PlayerHealthController _clientHealthController;
 
-    private int _hostScore = 0;
-    private int _clientScore = 0;
+    private Coroutine _fillingHostScoreCoroutine;
+    private Coroutine _fillingClientScoreCoroutine;
+
+    private float _maxScore = 100;
+
+    private float _hostScore = 0;
+    private float _clientScore = 0;
 
     private void Start()
     {
         _playerSpawner.OnPlayerHealthControllerChanged += HandleHealthControllerChanged;
         _capturePoint.OnPointCaptured += HandlePointCaptured;
+        _capturePoint.OnPointUncaptured += HandlePointUncaptured;
+    }
+
+    private void HandlePointUncaptured(ulong id)
+    {
+        if (id == 0)
+        {
+            StopFillingHostScoreRpc();
+        }
+        else
+        {
+            StopFillingClientScoreRpc();
+        }
     }
 
     private void HandlePointCaptured(ulong invaderId)
@@ -102,15 +121,45 @@ public class GameScoreManager : NetworkBehaviour
     [Rpc(SendTo.ClientsAndHost)]
     private void ChangeUIClientScoreRpc()
     {
-        _clientScore++;
-        UIReferencesManager.Instance.ClientScore.text = _clientScore.ToString();
+        _fillingClientScoreCoroutine = StartCoroutine(FillingClientScore());
     }
 
     [Rpc(SendTo.ClientsAndHost)]
     private void ChangeUIHostScoreRpc()
     {
-        _hostScore++;
-        UIReferencesManager.Instance.HostScore.text = _hostScore.ToString();
+        _fillingHostScoreCoroutine = StartCoroutine(FillingHostScore());
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void StopFillingHostScoreRpc()
+    {
+        StopCoroutine(_fillingHostScoreCoroutine);
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void StopFillingClientScoreRpc()
+    {
+        StopCoroutine(_fillingClientScoreCoroutine);
+    }
+
+    private IEnumerator FillingHostScore()
+    {
+        while (_hostScore != _maxScore)
+        {
+            _hostScore += 20;
+            UIReferencesManager.Instance.HostScore.fillAmount = _hostScore / _maxScore;
+            yield return new WaitForSeconds(0.5f);
+        }
+    }
+
+    private IEnumerator FillingClientScore()
+    {
+        while (_clientScore != _maxScore)
+        {
+            _hostScore += 20;
+            UIReferencesManager.Instance.ClientScore.fillAmount = _clientScore / _maxScore;
+            yield return new WaitForSeconds(0.5f);
+        }
     }
 
     public override void OnDestroy()

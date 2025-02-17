@@ -135,6 +135,8 @@ GameObject:
   - component: {fileID: 5199924793880513809}
   - component: {fileID: 3195409692817435764}
   - component: {fileID: 2513395350118708380}
+  - component: {fileID: 9028895317472143460}
+  - component: {fileID: 1881938145079850833}
   m_Layer: 0
   m_Name: State Machine
   m_TagString: Untagged
@@ -178,12 +180,13 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1316549184997674768}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 64194d57a328054419a59fbefd516601, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _transitions: []
+  _transitions:
+  - {fileID: 9028895317472143460}
   _agent: {fileID: 5884560863172650960}
   _animator: {fileID: 3424995694261932207}
   stateMachine: {fileID: 5199924793880513809}
@@ -194,13 +197,42 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1316549184997674768}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 54ff5026ca9aa124480088407a014fc6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _transitions: []
+  _transitions:
+  - {fileID: 1881938145079850833}
   _animator: {fileID: 3424995694261932207}
+  stateMachine: {fileID: 5199924793880513809}
+--- !u!114 &9028895317472143460
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1316549184997674768}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: acbfda4cbe0a09049a5beb8d75e6644f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateToTransition: {fileID: 2513395350118708380}
+  stateMachine: {fileID: 5199924793880513809}
+--- !u!114 &1881938145079850833
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1316549184997674768}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c36538d709b0e74429ca9c07b83db82b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stateToTransition: {fileID: 3195409692817435764}
   stateMachine: {fileID: 5199924793880513809}
 --- !u!1001 &2095319451790450210
 PrefabInstance:
@@ -243,7 +275,7 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: 45901a0871793e14bbfbacd73d4f0583,
         type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 45901a0871793e14bbfbacd73d4f0583,
         type: 3}
@@ -253,7 +285,7 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: 45901a0871793e14bbfbacd73d4f0583,
         type: 3}
       propertyPath: m_LocalRotation.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 45901a0871793e14bbfbacd73d4f0583,
         type: 3}
@@ -268,7 +300,7 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: 45901a0871793e14bbfbacd73d4f0583,
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 180
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 45901a0871793e14bbfbacd73d4f0583,
         type: 3}
@@ -278,7 +310,7 @@ PrefabInstance:
     - target: {fileID: 919132149155446097, guid: 45901a0871793e14bbfbacd73d4f0583,
         type: 3}
       propertyPath: m_Name
-      value: GribArmature
+      value: Mushroom
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 45901a0871793e14bbfbacd73d4f0583,
         type: 3}
