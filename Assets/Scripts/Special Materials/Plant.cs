@@ -72,6 +72,8 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
 
     private void Start()
     {
+        materialType = Type.Plant;
+
         _bulletTrail = projectilePrefabs[projectilePrefabKey].GetComponent<TrailRenderer>();
         _summonedPlant = Resources.Load<GameObject>("Plant/Summon");
     }
@@ -216,7 +218,7 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
 
     public override void Movement()
     {
-        if (!disablingPlayerMove)
+        if (!playerMovementController.disablingPlayerMove)
         {
             HandleHookshotStart();
         }
@@ -245,7 +247,7 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
         if (_hookshotSize >= Vector3.Distance(playerMovementController.transform.position, _hookshotPosition))
         {
             _throwing = false;
-            disablingPlayerMove = true;
+            playerMovementController.disablingPlayerMove = true;
             _isHookshotMoving = true;
         }
     }
@@ -278,7 +280,7 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
 
     private void StopHookshot()
     {
-        disablingPlayerMove = false;
+        playerMovementController.disablingPlayerMove = false;
         _isHookshotMoving = false;
         playerMovementController.ResetGravityEffect();
 
@@ -443,7 +445,7 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
     private void StartClimbing()
     {
         _climbing = true;
-        disablingPlayerMove = true;
+        playerMovementController.disablingPlayerMove = true;
 
         _lastWall = _frontBotWallHit.transform;
         _lastWallNormal = _frontBotWallHit.normal;
@@ -457,7 +459,7 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
     private void StopClimbing()
     {
         _climbing = false;
-        disablingPlayerMove = false;
+        playerMovementController.disablingPlayerMove = false;
         /*if (exitWallTimer <= 0)
         {
             disablingPlayerMoveDuringMovementSkill = false;

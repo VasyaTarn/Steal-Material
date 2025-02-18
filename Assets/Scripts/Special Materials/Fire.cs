@@ -46,6 +46,8 @@ public class Fire : MaterialSkills
 
     private void Start()
     {
+        materialType = Type.Fire;
+
         _wisp = Resources.Load<GameObject>("Fire/Wisp");
         _currentburnDamage = _minBurnDamage;
         _bulletPrefab = projectilePrefabs[projectilePrefabKey];
@@ -68,11 +70,11 @@ public class Fire : MaterialSkills
     private IEnumerator ActivateCharge(float time)
     {
         _isRunningChargeCoroutine = true;
-        disablingPlayerMove = true;
+        playerMovementController.disablingPlayerMove = true;
 
         yield return new WaitForSeconds(time);
 
-        disablingPlayerMove = false;
+        playerMovementController.disablingPlayerMove = false;
         _currentburnDamage *= 1.5f;
         _currentChargeStage++;
         _isRunningChargeCoroutine = false;
@@ -142,6 +144,7 @@ public class Fire : MaterialSkills
                 for (int i = 0; i < projectile.transform.childCount; i++)
                 {
                     TrailRenderer child = projectile.transform.GetChild(i).GetComponent<TrailRenderer>();
+
                     if (child != null)
                     {
                         child.Clear();
@@ -244,14 +247,14 @@ public class Fire : MaterialSkills
 
     private IEnumerator Teleport(Vector3 position)
     {
-        disablingPlayerJumpAndGravity = true;
-        disablingPlayerMove = true;
+        playerMovementController.disablingPlayerJumpAndGravity = true;
+        playerMovementController.disablingPlayerMove = true;
 
         playerNetworkTransform.Teleport(position, Player.transform.rotation, Player.transform.localScale);
         yield return new WaitForSeconds(0.2f);
 
-        disablingPlayerJumpAndGravity = false;
-        disablingPlayerMove = false;
+        playerMovementController.disablingPlayerJumpAndGravity = false;
+        playerMovementController.disablingPlayerMove = false;
     }
 
     #endregion
@@ -276,21 +279,19 @@ public class Fire : MaterialSkills
 
     private void EnableAstral()
     {
-        disablingPlayerJumpAndGravity = true;
-        disablingPlayerMove = true;
+        playerMovementController.disablingPlayerJumpAndGravity = true;
+        playerMovementController.disablingPlayerMove = true;
         playerHealthController.healthStats.isImmortal = true;
 
         playerObjectReferences.model.SetActive(false);
-        playerHealthController.healthbarSprite.gameObject.SetActive(false);
     }
 
     private void DisableAstral()
     {
         playerObjectReferences.model.SetActive(true);
-        playerHealthController.healthbarSprite.gameObject.SetActive(true);
         playerHealthController.healthStats.isImmortal = false;
-        disablingPlayerJumpAndGravity = false;
-        disablingPlayerMove = false;
+        playerMovementController.disablingPlayerJumpAndGravity = false;
+        playerMovementController.disablingPlayerMove = false;
     }
 
     [Rpc(SendTo.Server)]
@@ -307,12 +308,10 @@ public class Fire : MaterialSkills
             if (state)
             {
                 playerSkillsController.enemyObjectReferences.model.SetActive(false);
-                playerSkillsController.enemyHealthController.healthbarSprite.gameObject.SetActive(false);
             }
             else
             {
                 playerSkillsController.enemyObjectReferences.model.SetActive(true);
-                playerSkillsController.enemyHealthController.healthbarSprite.gameObject.SetActive(true);
             }
         }
     }
