@@ -2,6 +2,7 @@ using UnityEngine;
 using Unity.Netcode;
 using UnityEngine.UI;
 using System;
+using UniRx;
 
 public class PlayerHealthController : NetworkBehaviour
 {
@@ -9,9 +10,14 @@ public class PlayerHealthController : NetworkBehaviour
     public NetworkVariable<float> currentHp = new NetworkVariable<float>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
     public Action<float> OnDamageTaken;
-    public event Action<ulong> OnDeth;
+
+    private readonly Subject<ulong> _onDeathSubject = new Subject<ulong>();
+    public IObservable<ulong> OnDeath => _onDeathSubject;
+    //public event Action<ulong> OnDeth;
 
     private Image _healthBarImage;
+
+    private Crosshair _crosshair;
 
     private void Start()
     {
@@ -27,6 +33,8 @@ public class PlayerHealthController : NetworkBehaviour
         {
             _healthBarImage = UIReferencesManager.Instance.HealthbarImage;
         }
+
+        _crosshair = UIReferencesManager.Instance.Crosshair;
 
         currentHp.OnValueChanged += OnHealthChanged;
     }
@@ -54,6 +62,24 @@ public class PlayerHealthController : NetworkBehaviour
     {
         if (!healthStats.isImmortal && currentHp.Value > 0)
         {
+            _crosshair.AnimateDamageResize();
+
+            SubmitDamageServerRpc(damageNumber);
+        }
+    }
+
+    public void TakeDamage(float damageNumber, ulong ownerId)
+    {
+        if (!healthStats.isImmortal && currentHp.Value > 0)
+        {
+            /*Debug.Log("ID1: " + OwnerClientId); // кто получил урон
+            Debug.Log("ID2: " + ownerId); // кто стрельнул*/
+
+            if (ownerId == 0)
+            {
+                _crosshair.AnimateDamageResize();
+            }
+
             SubmitDamageServerRpc(damageNumber);
         }
     }
@@ -63,6 +89,8 @@ public class PlayerHealthController : NetworkBehaviour
         if (!healthStats.isImmortal && currentHp.Value > 0)
         {
             SubmitDamageByRetaliateServerRpc(damageNumber);
+
+            _crosshair.AnimateDamageResize();
         }
     }
 
@@ -129,7 +157,8 @@ public class PlayerHealthController : NetworkBehaviour
 
     private void Die()
     {
-        OnDeth?.Invoke(OwnerClientId);
+        _onDeathSubject.OnNext(OwnerClientId);
+        //OnDeth?.Invoke(OwnerClientId);
     }
 
     public void EnableResistance(float percentage)

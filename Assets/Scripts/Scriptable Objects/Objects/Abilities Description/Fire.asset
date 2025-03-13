@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43b4a05572eeb4a4589ac39064724eab, type: 3}
+  m_Name: Fire
+  m_EditorClassIdentifier: 
+  _name: Fire
+  _rangeDescription: "<size=22><b>Launches a fireball that explodes on impact, dealing
+    damage to all enemies in the blast radius.</b></size> \n\nDamage: n\nExplosion
+    radius: n\nFire rate: n\nProjectile speed: n"
+  _passiveDescription: '<size=22><b>A burning aura in a certain radius that deals
+    damage per second. Can be enhanced by stages of the "Melee" ability. </b></size>
+
+
+    Damage
+    per second: n'
+  _meleeDescription: '<size=22><b>Ignites the character''s body changing its charge
+    stage increasing damage from the "Passive" ability. During charging, the character
+    cannot move. The maximum number of stages is 3. After receiving damage, the stage
+    is reset. </b></size>
+
+
+    Charging duration: n
+
+    Burning aura damage multiplier
+    per stage: xn
+
+    Cooldown: ns'
+  _movementDescription: '<size=22><b>When aiming at a fire wisp ("Special" ability)
+    and activating the ability, teleports to his position. </b></size>
+
+
+    Cooldown:
+    ns'
+  _defenseDescription: "<size=22><b>The character goes into astral form, remaining
+    in the initial position without the ability to move and gains invulnerability.
+    Some abilities can be used in astral form.</b></size> \n\nDuration: ns\nCooldown:
+    ns"
+  _specialDescription: '<size=22><b>Spawns a wisp on the ground at the point where
+    the crosshair is pointing. Synergizes with the "Movement" ability to unlock the
+    ability to teleport. The maximum number of wisp is 3. If you try to spawn more,
+    they will be replaced. </b></size>
+
+
+    Cooldown: ns'

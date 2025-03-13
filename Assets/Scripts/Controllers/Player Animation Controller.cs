@@ -1,4 +1,5 @@
 using System;
+using UniRx;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -16,6 +17,8 @@ public class PlayerAnimationController : NetworkBehaviour
     public SkinView SkinView => _skinView;
     public PlayerArmature CachedComponentNetwork => _cachedComponentNetwork;
 
+    private readonly CompositeDisposable _disposables = new CompositeDisposable();
+
     private void Start()
     {
         _skinView = GetComponent<SkinView>();
@@ -23,7 +26,10 @@ public class PlayerAnimationController : NetworkBehaviour
         _movementController = GetComponent<PlayerMovementController>();
         _healthController = GetComponent<PlayerHealthController>();
 
-        _healthController.OnDeth += HandlePlayerDeath;
+        //_healthController.OnDeth += HandlePlayerDeath;
+        _healthController.OnDeath
+            .Subscribe(HandlePlayerDeath)
+            .AddTo(_disposables);
     }
 
     private void Update()
@@ -148,5 +154,10 @@ public class PlayerAnimationController : NetworkBehaviour
     {
         _cachedComponentNetwork.animator.SetBool("IsDeath", true);
         _cachedComponentNetwork.isEnabledAnimatorIK = false;
+    }
+
+    public override void OnNetworkDespawn()
+    {
+        _disposables.Dispose();
     }
 }

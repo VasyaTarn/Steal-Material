@@ -10,18 +10,25 @@ public abstract class BulletProjectile : NetworkBehaviour
     [SerializeField] protected float damage;
 
 
-    protected bool isNetworkObject = false;
+    public bool isNetworkObject = false;
     protected Action onReleaseCallback;
     protected ulong ownerId;
+
+    public Crosshair _crosshair;
+
+    protected virtual void Start()
+    {
+        _crosshair = UIReferencesManager.Instance.Crosshair;
+    }
 
     public override void OnNetworkSpawn()
     {
         isNetworkObject = true;
     }
 
-    public virtual void Movement(Vector3 direction, Action releaseCallback) {}
+    public abstract void Movement(Vector3 direction, Action releaseCallback);
 
-    protected virtual void OnTrigger(Collider target) {}
+    protected abstract void OnTrigger(Collider target);
 
     public void SetOwnerId(ulong ownerId)
     {

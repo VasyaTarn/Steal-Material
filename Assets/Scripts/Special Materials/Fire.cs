@@ -56,7 +56,7 @@ public class Fire : MaterialSkills
     #region Melee
     public override void MeleeAttack()
     {
-        if(playerHealthController.OnDamageTaken == null)
+        if (playerHealthController.OnDamageTaken == null)
         {
             playerHealthController.OnDamageTaken += HandleDamageTaken;
         }
@@ -119,13 +119,13 @@ public class Fire : MaterialSkills
 
         GameObject projectile = _projectilePool.Get(projectileSpawnPoint);
 
-        if(projectile != null && projectile.transform.childCount > 0)
+        if (projectile != null && projectile.transform.childCount > 0)
         {
             for (int i = 0; i < projectile.transform.childCount; i++)
             {
                 TrailRenderer child = projectile.transform.GetChild(i).GetComponent<TrailRenderer>();
 
-                if(child != null)
+                if (child != null)
                 {
                     if (!child.enabled)
                     {
@@ -269,11 +269,11 @@ public class Fire : MaterialSkills
     private IEnumerator ActivateAstral()
     {
         EnableAstral();
-        UpdateAstralStateRpc(true, ownerId);
+        UpdateAstralStateRpc(true, ownerId, player.GetComponent<NetworkObject>());
 
         yield return new WaitForSeconds(_astralDuration);
 
-        UpdateAstralStateRpc(false, ownerId);
+        UpdateAstralStateRpc(false, ownerId, player.GetComponent<NetworkObject>());
         DisableAstral();
     }
 
@@ -283,35 +283,73 @@ public class Fire : MaterialSkills
         playerMovementController.disablingPlayerMove = true;
         playerHealthController.healthStats.isImmortal = true;
 
-        playerObjectReferences.model.SetActive(false);
+        if (IsServer)
+        {
+            if (playerObjectReferences.fireModelNetwork.Value.TryGet(out NetworkObject fireModel))
+            {
+                fireModel.gameObject.SetActive(false);
+            }
+        }
+        else
+        {
+            playerObjectReferences.fireModelLocal.SetActive(false);
+        }
     }
 
     private void DisableAstral()
     {
-        playerObjectReferences.model.SetActive(true);
+        if (IsServer)
+        {
+            if (playerObjectReferences.fireModelNetwork.Value.TryGet(out NetworkObject fireModel))
+            {
+                fireModel.gameObject.SetActive(true);
+            }
+        }
+        else
+        {
+            playerObjectReferences.fireModelLocal.SetActive(true);
+        }
+
         playerHealthController.healthStats.isImmortal = false;
         playerMovementController.disablingPlayerJumpAndGravity = false;
         playerMovementController.disablingPlayerMove = false;
     }
 
     [Rpc(SendTo.Server)]
-    private void UpdateAstralStateRpc(bool state, ulong id)
+    private void UpdateAstralStateRpc(bool state, ulong id, NetworkObjectReference playerObjectReference)
     {
-        UpdateAstralStateClientRpc(state, id);
+        UpdateAstralStateClientRpc(state, id, playerObjectReference);
     }
 
     [Rpc(SendTo.ClientsAndHost)]
-    private void UpdateAstralStateClientRpc(bool state, ulong id)
+    private void UpdateAstralStateClientRpc(bool state, ulong id, NetworkObjectReference playerObjectReference)
     {
-        if (id != ownerId)
+        Debug.Log("id: " + id);
+        Debug.Log("ownerId: " + ownerId);
+
+        if (id != ownerId || (IsClient && !IsServer && id == ownerId))
         {
             if (state)
             {
-                playerSkillsController.enemyObjectReferences.model.SetActive(false);
+                if (playerObjectReference.TryGet(out NetworkObject playerObject))
+                {
+                    if (playerObject.GetComponent<PlayerObjectReferences>().fireModelNetwork.Value.TryGet(out NetworkObject fireModel))
+                    {
+                        Debug.Log("Test1");
+                        fireModel.gameObject.SetActive(false);
+                    }
+                }
             }
             else
             {
-                playerSkillsController.enemyObjectReferences.model.SetActive(true);
+                if (playerObjectReference.TryGet(out NetworkObject playerObject))
+                {
+                    if (playerObject.GetComponent<PlayerObjectReferences>().fireModelNetwork.Value.TryGet(out NetworkObject fireModel))
+                    {
+                        Debug.Log("Test1");
+                        fireModel.gameObject.SetActive(true);
+                    }
+                }
             }
         }
     }
@@ -365,7 +403,7 @@ public class Fire : MaterialSkills
 
         wispObj.SetDeathAction(() => _wispPool.Release(wispObj.gameObject));
 
-        if(_wispLimitedLocalPool.Count > _wispLimit)
+        if (_wispLimitedLocalPool.Count > _wispLimit)
         {
             _wispLimitedLocalPool.Dequeue().onDeathCallback?.Invoke();
         }
@@ -384,7 +422,7 @@ public class Fire : MaterialSkills
 
         Wisp wispObj = wispNetwork.GetComponent<Wisp>();
 
-        if(ownerId == 0)
+        if (ownerId == 0)
         {
             _wispLimitedNetworkPoolForHost.Enqueue(wispObj);
         }
@@ -433,7 +471,7 @@ public class Fire : MaterialSkills
             NetworkObject playerNetworkObject = collider.gameObject.GetComponent<NetworkObject>();
             if (playerNetworkObject != null && playerNetworkObject.OwnerClientId != ownerId)
             {
-                if(!_isRunningPassiveCoroutine)
+                if (!_isRunningPassiveCoroutine)
                 {
                     StartCoroutine(BurnCoroutine(_currentburnDamage));
                 }

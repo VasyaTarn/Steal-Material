@@ -24,15 +24,23 @@ public class BasicProjectile : BulletProjectile
 
     protected override void OnTrigger(Collider target)
     {
-
-        if (isNetworkObject && target.TryGetComponent(out PlayerHealthController healthController))
+        if (target.TryGetComponent(out PlayerHealthController healthController))
         {
-
             if (healthController != null)
             {
-                healthController.TakeDamage(damage);
+                if (isNetworkObject)
+                {
+
+                    healthController.TakeDamage(damage);
+                }
+                else
+                {
+                    _crosshair.AnimateDamageResize();
+                }
             }
         }
+
+        
 
         onReleaseCallback?.Invoke();
     }

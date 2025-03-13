@@ -1,10 +1,8 @@
 using DG.Tweening;
-using System;
 using System.Collections;
-using System.Collections.Generic;
+using UniRx;
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 public class GameScoreManager : NetworkBehaviour
 {
@@ -19,25 +17,49 @@ public class GameScoreManager : NetworkBehaviour
 
     private float _maxScore = 100;
 
-    private float _hostScore = 0;
-    private float _clientScore = 0;
+    private float _hostFillScore = 0;
+    private float _clientFillScore = 0;
+
+    private float _hostRoundScore = 0;
+    private float _clientRoundScore = 0;
+
+    private readonly CompositeDisposable _disposables = new CompositeDisposable();
 
     private void Start()
     {
-        _playerSpawner.OnPlayerHealthControllerChanged += HandleHealthControllerChanged;
-        _capturePoint.OnPointCaptured += HandlePointCaptured;
-        _capturePoint.OnPointUncaptured += HandlePointUncaptured;
+        _playerSpawner.OnPlayerHealthControllerChanged
+            .Subscribe(HandleHealthControllerChanged)
+            .AddTo(_disposables);
+
+        //_playerSpawner.OnPlayerHealthControllerChanged += HandleHealthControllerChanged;
+
+        _capturePoint.OnPointCaptured
+            .Subscribe(HandlePointCaptured)
+            .AddTo(_disposables);
+
+        _capturePoint.OnPointUncaptured
+            .Subscribe(HandlePointUncaptured)
+            .AddTo(_disposables);
+
+        /*_capturePoint.OnPointCaptured += HandlePointCaptured;
+        _capturePoint.OnPointUncaptured += HandlePointUncaptured;*/
     }
 
     private void HandlePointUncaptured(ulong id)
     {
         if (id == 0)
         {
-            StopFillingHostScoreRpc();
+            if (_fillingHostScoreCoroutine != null)
+            {
+                StopFillingHostScoreRpc();
+            }
         }
         else
         {
-            StopFillingClientScoreRpc();
+            if (_fillingClientScoreCoroutine != null)
+            {
+                StopFillingClientScoreRpc();
+            }
         }
     }
 
@@ -53,12 +75,20 @@ public class GameScoreManager : NetworkBehaviour
             if (newController.OwnerClientId == 0)
             {
                 _hostHealthController = newController;
-                _hostHealthController.OnDeth += HandlePlayerDeath;
+                //_hostHealthController.OnDeth += HandlePlayerDeath;
+
+                _hostHealthController.OnDeath
+                    .Subscribe(HandlePlayerDeath)
+                    .AddTo(_disposables);
             }
             else
             {
                 _clientHealthController = newController;
-                _clientHealthController.OnDeth += HandlePlayerDeath;
+                //_clientHealthController.OnDeth += HandlePlayerDeath;
+
+                _clientHealthController.OnDeath
+                    .Subscribe(HandlePlayerDeath)
+                    .AddTo(_disposables);
             }
         }
     }
@@ -145,27 +175,35 @@ public class GameScoreManager : NetworkBehaviour
 
     private IEnumerator FillingHostScore()
     {
-        while (_hostScore != _maxScore)
+        WaitForSeconds waitTime = new WaitForSeconds(0.5f);
+
+        while (_hostFillScore != _maxScore)
         {
-            _hostScore++;
-            UIReferencesManager.Instance.HostScore.fillAmount = _hostScore / _maxScore;
-            yield return new WaitForSeconds(0.5f);
+            _hostFillScore++;
+            UIReferencesManager.Instance.HostFillScore.fillAmount = _hostFillScore / _maxScore;
+            yield return waitTime;
         }
 
-        Debug.Log("Test fill host");
+        _hostRoundScore++;
+        UIReferencesManager.Instance.HostRoundScore.text = _hostRoundScore.ToString();
+
         StartRoundFinisher();
     }
 
     private IEnumerator FillingClientScore()
     {
-        while (_clientScore != _maxScore)
+        WaitForSeconds waitTime = new WaitForSeconds(0.5f);
+
+        while (_clientFillScore != _maxScore)
         {
-            _clientScore++;
-            UIReferencesManager.Instance.ClientScore.fillAmount = _clientScore / _maxScore;
-            yield return new WaitForSeconds(0.5f);
+            _clientFillScore++;
+            UIReferencesManager.Instance.ClientFillScore.fillAmount = _clientFillScore / _maxScore;
+            yield return waitTime;
         }
 
-        Debug.Log("Test fill client");
+        _clientRoundScore++;
+        UIReferencesManager.Instance.ClientRoundScore.text = _clientRoundScore.ToString();
+
         StartRoundFinisher();
     }
 
@@ -202,11 +240,11 @@ public class GameScoreManager : NetworkBehaviour
 
         yield return new WaitForSeconds(1f);
 
-        _hostScore = 0;
-        UIReferencesManager.Instance.HostScore.fillAmount = _hostScore / _maxScore;
+        _hostFillScore = 0;
+        UIReferencesManager.Instance.HostFillScore.fillAmount = _hostFillScore / _maxScore;
 
-        _clientScore = 0;
-        UIReferencesManager.Instance.ClientScore.fillAmount = _clientScore / _maxScore;
+        _clientFillScore = 0;
+        UIReferencesManager.Instance.ClientFillScore.fillAmount = _clientFillScore / _maxScore;
 
         UIReferencesManager.Instance.TopCapturePointStatus.color = Color.white;
 
@@ -216,12 +254,14 @@ public class GameScoreManager : NetworkBehaviour
 
     public override void OnDestroy()
     {
-        _playerSpawner.OnPlayerHealthControllerChanged -= HandleHealthControllerChanged;
+        //_playerSpawner.OnPlayerHealthControllerChanged -= HandleHealthControllerChanged;
 
-        if (_hostHealthController != null && _clientHealthController != null)
+        /*if (_hostHealthController != null && _clientHealthController != null)
         {
             _hostHealthController.OnDeth -= HandlePlayerDeath;
             _clientHealthController.OnDeth -= HandlePlayerDeath;
-        }
+        }*/
+
+        _disposables.Dispose();
     }
 }

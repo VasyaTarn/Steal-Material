@@ -20,12 +20,23 @@ public class UIReferencesManager : MonoBehaviour
     [SerializeField] private Image _healthbarImage;
 
     [Header("Score Bar")]
-    [SerializeField] private Image _hostScore;
-    [SerializeField] private Image _clientScore;
+    [SerializeField] private Image _hostFillScore;
+    [SerializeField] private Image _clientFillScore;
+
+    [SerializeField] private TMP_Text _hostRoundScore;
+    [SerializeField] private TMP_Text _clientRoundScore;
+
     [SerializeField] private Image _topCapturePointStatus;
 
     [Header("Other")]
     [SerializeField] private CanvasGroup _roundOverScreen;
+    [SerializeField] private TMP_Text _waitingOpponentText;
+
+    [Header("Ability Descriptor")]
+    [SerializeField] private GameObject _abilityDescriptor;
+
+    [Header("Crosshair")]
+    [SerializeField] private Crosshair _crossHair;
 
     public Melee Melee => _melee;
     public Movement Movement => _movement;
@@ -34,14 +45,26 @@ public class UIReferencesManager : MonoBehaviour
     public Steal Steal => _steal;
     public Image HealthbarImage => _healthbarImage;
     public TMP_Text EnemyMaterialDisplay => _enemyMaterialDisplay;
-    public Image HostScore => _hostScore;
-    public Image ClientScore => _clientScore;
+    public Image HostFillScore => _hostFillScore;
+    public Image ClientFillScore => _clientFillScore;
     public Image TopCapturePointStatus => _topCapturePointStatus;
     public CanvasGroup RoundOverScreen => _roundOverScreen;
+    public TMP_Text WaitingOpponentText => _waitingOpponentText;
+    public TMP_Text HostRoundScore => _hostRoundScore;
+    public TMP_Text ClientRoundScore => _clientRoundScore;
+    public GameObject AbilityDescriptor => _abilityDescriptor;
+    public Crosshair Crosshair => _crossHair;
+
 
     [Inject]
-    public void Construct()
+    private void Construct()
     {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
         Instance = this;
     }
 }

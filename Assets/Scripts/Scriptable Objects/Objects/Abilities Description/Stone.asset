@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43b4a05572eeb4a4589ac39064724eab, type: 3}
+  m_Name: Stone
+  m_EditorClassIdentifier: 
+  _name: Stone
+  _rangeDescription: '<size=22><b>Throw a boulder under the effect of ballistics.
+    If the enemy is stunned, the damage multiplier on hit is applied. </b></size>
+
+
+    <b>Damage:
+    n
+
+    Stun damage multiplier: xn
+
+    Fire rate: n
+
+    Projectile speed: n'
+  _passiveDescription: "<size=22><b>Stone armor reduces incoming damage to the character,
+    but reduces his movement speed.</b></size> \n\nIncoming damage reduction: n%\nSpeed
+    \u200B\u200Breduction: n%"
+  _meleeDescription: '<size=22><b>A massive boulder rises from the ground, dealing
+    damage and stunning in front of the character (Applies the "Stun" effect for
+    synergy with the "Range" ability).</b></size>
+
+
+    Damage: n
+
+    Cooldown:
+    ns
+
+    Stun duration: ns'
+  _movementDescription: '<size=22><b>Continuous sliding on the ground.</b></size>
+
+
+    Sliding
+    duration: ns
+
+    Cooldown: ns'
+  _defenseDescription: '<size=22><b>A stone wall rises in front of the character.
+    It cannot be destroyed, and disappears after a while.</b></size>
+
+
+    Wall duration:
+    ns
+
+    Cooldown: ns'
+  _specialDescription: '<size=22><b>Creates dust storms in 4 directions from the
+    character, blocking visibility.</b></size>
+
+
+    Dust storm duration: ns
+
+    Cooldown:
+    ns'

@@ -16,7 +16,7 @@ public class PlayerMovementController : NetworkBehaviour
     [Range(0.0f, 0.3f)]
     public float rotationSmoothTime = 0.05f;
 
-    public float speedChangeRate = 3.0f;
+    public float speedChangeRate = 10.0f;
 
     [Space(20)]
     public float gravity = -15f;
@@ -50,13 +50,11 @@ public class PlayerMovementController : NetworkBehaviour
     public Vector2 look;
 
     private float _speed;
-    private float _targetRotation = 0.0f;
+    //private float _targetRotation = 0.0f;
     private float _rotationVelocity;
     public float verticalVelocity;
     private float _terminalVelocity = 53.0f;
-    [HideInInspector] public Vector3 characterVelocityMomentum;
     [HideInInspector] public Vector3 characterVelocity;
-    [HideInInspector] public float momentumDrag = 3f;
     private Vector3 _targetDirection;
 
     private float _cinemachineTargetYaw;
@@ -78,6 +76,12 @@ public class PlayerMovementController : NetworkBehaviour
 
     [HideInInspector] public bool disablingPlayerMove = true;
     [HideInInspector] public bool disablingPlayerJumpAndGravity = true;
+
+    //Test
+
+    private Vector3 _smoothedCameraForward;
+    private Vector3 _smoothedCameraRight;
+    private float _cameraSmoothTime = 0.1f;
 
     //private bool rotateOnMove = true;
     //private bool isMovementDisabled = false;
@@ -129,6 +133,9 @@ public class PlayerMovementController : NetworkBehaviour
         currentMoveSpeed = baseMovementStats.moveSpeed;
 
         _fallTimeoutDelta = fallTimeout;
+
+        _smoothedCameraForward = new Vector3(mainCamera.transform.forward.x, 0, mainCamera.transform.forward.z).normalized;
+        _smoothedCameraRight = new Vector3(mainCamera.transform.right.x, 0, mainCamera.transform.right.z).normalized;
     }
 
     [Rpc(SendTo.Server)]
@@ -150,6 +157,11 @@ public class PlayerMovementController : NetworkBehaviour
         {
             JumpAndGravity();
         }
+
+        /*if (!disablingPlayerMove && !currentMovementStats.isStuned.Value)
+        {
+            ApplyMovement();
+        }*/
     }
 
     private void Update()
@@ -160,6 +172,8 @@ public class PlayerMovementController : NetworkBehaviour
         if (!disablingPlayerMove && !currentMovementStats.isStuned.Value)
         {
             Move();
+
+            //CalculateMovementDirection();
         }
 
         //Debug.Log(currentMovementStats.moveSpeed.Value);
@@ -186,6 +200,8 @@ public class PlayerMovementController : NetworkBehaviour
         }
 
         CameraRotation();
+
+        UpdateSmoothedCameraVectors();
     }
 
     private void GroundedCheck()
@@ -221,6 +237,18 @@ public class PlayerMovementController : NetworkBehaviour
         cinemachineCameraTarget.transform.rotation = Quaternion.Euler(_cinemachineTargetPitch + cameraAngleOverride, _cinemachineTargetYaw, 0.0f);
     }
 
+    private void UpdateSmoothedCameraVectors()
+    {
+        Vector3 targetCameraForward = new Vector3(mainCamera.transform.forward.x, 0, mainCamera.transform.forward.z).normalized;
+        Vector3 targetCameraRight = new Vector3(mainCamera.transform.right.x, 0, mainCamera.transform.right.z).normalized;
+
+        _smoothedCameraForward = Vector3.Slerp(_smoothedCameraForward, targetCameraForward, Time.deltaTime / _cameraSmoothTime);
+        _smoothedCameraRight = Vector3.Slerp(_smoothedCameraRight, targetCameraRight, Time.deltaTime / _cameraSmoothTime);
+
+        _smoothedCameraForward.Normalize();
+        _smoothedCameraRight.Normalize();
+    }
+
     private void Move()
     {
         float targetSpeed;
@@ -233,7 +261,7 @@ public class PlayerMovementController : NetworkBehaviour
         {
             targetSpeed = currentMoveSpeed;
         }
-        
+
 
         if (inputs.move == Vector2.zero)
         {
@@ -241,39 +269,34 @@ public class PlayerMovementController : NetworkBehaviour
         }
 
         float currentHorizontalSpeed = new Vector3(controller.velocity.x, 0.0f, controller.velocity.z).magnitude;
-        //float speedOffset = 0.2f;
+        float speedOffset = 0.2f;
 
-        _speed = targetSpeed;
-
-        /*if (currentHorizontalSpeed < targetSpeed - speedOffset || currentHorizontalSpeed > targetSpeed + speedOffset)
+        if (currentHorizontalSpeed < targetSpeed - speedOffset || currentHorizontalSpeed > targetSpeed + speedOffset)
         {
-            speed = Mathf.Lerp(currentHorizontalSpeed, targetSpeed, Time.deltaTime * speedChangeRate);
+            _speed = Mathf.Lerp(currentHorizontalSpeed, targetSpeed, Time.deltaTime * speedChangeRate);
 
-            speed = Mathf.Round(speed * 1000f) / 1000f;
+            _speed = Mathf.Round(_speed * 1000f) / 1000f;
         }
         else
         {
-            speed = targetSpeed;
-        }*/
+            _speed = targetSpeed;
+        }
+
+        float speedDelta = _speed * Time.deltaTime;
 
         Vector3 inputDirection = new Vector3(inputs.move.x, 0.0f, inputs.move.y).normalized;
 
-        _targetRotation = mainCamera.transform.eulerAngles.y;
-
-        float rotation = Mathf.SmoothDampAngle(transform.eulerAngles.y, _targetRotation, ref _rotationVelocity, rotationSmoothTime);
-
+        float targetYaw = Mathf.Atan2(_smoothedCameraForward.x, _smoothedCameraForward.z) * Mathf.Rad2Deg;
+        float rotation = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetYaw, ref _rotationVelocity, rotationSmoothTime);
         transform.rotation = Quaternion.Euler(0.0f, rotation, 0.0f);
 
-        Vector3 cameraForward = new Vector3(mainCamera.transform.forward.x, 0.0f, mainCamera.transform.forward.z).normalized;
-        Vector3 cameraRight = new Vector3(mainCamera.transform.right.x, 0.0f, mainCamera.transform.right.z).normalized;
+        _targetDirection = (_smoothedCameraRight * inputDirection.x + _smoothedCameraForward * inputDirection.z).normalized;
 
-        _targetDirection = (cameraRight * inputDirection.x + cameraForward * inputDirection.z).normalized;
+        characterVelocity = _targetDirection * speedDelta;
 
-        characterVelocity = _targetDirection * _speed * Time.deltaTime;
+        //Debug.Log($"characterVelocity: {characterVelocity}, deltaTime: {Time.deltaTime}");
 
-        //Debug.Log($"characterVelocity: {characterVelocity}, deltaTime: {Time.deltaTime}, targetDirection: {targetDirection}, speed: {speed}");
-
-        controller.Move(characterVelocity + new Vector3(0f, verticalVelocity, 0f) * Time.deltaTime);
+        controller.Move(characterVelocity + new Vector3(0f, verticalVelocity * Time.deltaTime, 0f));
     }
 
     private void JumpAndGravity()
@@ -318,7 +341,6 @@ public class PlayerMovementController : NetworkBehaviour
     private void DisableJumpRpc()
     {
         NetworkManager.Singleton.ConnectedClients[OwnerClientId].PlayerObject.GetComponent<Inputs>().jump = false;
-        Debug.Log(NetworkManager.Singleton.ConnectedClients[OwnerClientId].PlayerObject.GetComponent<Inputs>().jump);
     }
 
     public void ResetGravityEffect()

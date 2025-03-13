@@ -28,7 +28,7 @@ public class EnemyManager : NetworkBehaviour
 
     private void OnPlayerConnected(ulong clientId)
     {
-        if(IsServer)
+        if(NetworkManager.Singleton.IsServer)
         {
             GameObject playerObject = NetworkManager.Singleton.ConnectedClients[clientId].PlayerObject.gameObject;
 

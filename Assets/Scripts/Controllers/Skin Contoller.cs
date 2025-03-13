@@ -4,6 +4,7 @@ using Unity.Netcode;
 using Cinemachine;
 using System.Collections;
 using Zenject;
+using UniRx;
 
 public class SkinContoller : NetworkBehaviour
 {
@@ -23,6 +24,8 @@ public class SkinContoller : NetworkBehaviour
     private float _stealCooldown = 3f;
 
     [HideInInspector] public NetworkVariable<NetworkObjectReference> skinMaterialNetworkVar = new NetworkVariable<NetworkObjectReference>();
+
+    private AbilityDescriptor _abilityDescriptor;
 
     public bool disablingPlayerSkills { get; private set; }
     public SkinView skinView { get; private set; }
@@ -45,6 +48,7 @@ public class SkinContoller : NetworkBehaviour
         _input = GetComponent<Inputs>();
         _playerHealthController = GetComponent<PlayerHealthController>();
         _playerMovementController = GetComponent<PlayerMovementController>();
+        _abilityDescriptor = UIReferencesManager.Instance.AbilityDescriptor.GetComponent<AbilityDescriptor>();
 
         skinView = GetComponent<SkinView>();
 
@@ -159,6 +163,8 @@ public class SkinContoller : NetworkBehaviour
     {
         this.skinMaterial = skinMaterial;
         skills = skinMaterial.GetComponent<MaterialSkills>();
+
+        _abilityDescriptor.ChangeAbilitiesDescription(skills.AbilityDescription);
     }
 
     private void OnSkinMaterialChanged(NetworkObjectReference previousValue, NetworkObjectReference newValue)
@@ -189,5 +195,10 @@ public class SkinContoller : NetworkBehaviour
         _playerMovementController.disablingPlayerMove = false;
         _playerMovementController.disablingPlayerJumpAndGravity = false;
         disablingPlayerSkills = false;
+    }
+
+    public override void OnDestroy()
+    {
+        skinMaterialNetworkVar.OnValueChanged -= OnSkinMaterialChanged;
     }
 }

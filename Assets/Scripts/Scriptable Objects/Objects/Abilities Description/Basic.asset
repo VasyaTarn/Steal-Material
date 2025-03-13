@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43b4a05572eeb4a4589ac39064724eab, type: 3}
+  m_Name: Basic
+  m_EditorClassIdentifier: 
+  _name: Basic
+  _rangeDescription: '<size=22><b>Energy clot projectiles, no additional effects.</b></size>
+
+
+    Damage:
+    n
+
+    Fire Rate: n
+
+    Projectile Speed: n'
+  _passiveDescription: <size=22><b>Displaying enemy material.</b></size>
+  _meleeDescription: '<size=22><b>Claw attack in front of you.</b></size>
+
+
+    Damage:
+    n
+
+    Cooldown:  ns'
+  _movementDescription: "<size=22><b>Activate sprint to increase movement speed.
+    Pressing it again disables the ability.</b></size> \n\nSpeed \u200B\u200Bmultiplier:
+    xn"
+  _defenseDescription: "<size=22><b>Activate the ability to enter a block stance
+    to reduce incoming damage. Pressing it again disables the ability.</b></size>\n
+    \nDamage resistance: n%"
+  _specialDescription: '<size=22><b>Steals enemy material if enemy enters the ability
+    radius.</b></size>
+
+
+    Radius: n
+
+    Cooldown: ns'

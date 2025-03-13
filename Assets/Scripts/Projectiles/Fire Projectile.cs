@@ -11,8 +11,9 @@ public class FireProjectile : BulletProjectile
     private int _initialexplosionPoolSize = 10;
     private LocalObjectPool _explosionPool;
 
-    private void Start()
+    protected override void Start()
     {
+        base.Start();
         _explosion = Resources.Load<GameObject>("Fire/Explosion");
     }
 
@@ -46,16 +47,24 @@ public class FireProjectile : BulletProjectile
 
     protected override void OnTrigger(Collider target)
     {
-        if (isNetworkObject)
-        {
-            Collider[] hitColliders = Physics.OverlapSphere(transform.position, 2f, LayerMask.GetMask("Player"));
+        Collider[] hitColliders = Physics.OverlapSphere(transform.position, 2f, LayerMask.GetMask("Player"));
 
-            foreach (Collider collider in hitColliders)
+        foreach (Collider collider in hitColliders)
+        {
+            NetworkObject playerNetworkObject = collider.gameObject.GetComponent<NetworkObject>();
+            if (playerNetworkObject != null)
             {
-                NetworkObject playerNetworkObject = collider.gameObject.GetComponent<NetworkObject>();
-                if (playerNetworkObject != null && playerNetworkObject.OwnerClientId != ownerId)
+                if (isNetworkObject)
                 {
-                    playerNetworkObject.GetComponent<PlayerHealthController>().TakeDamage(damage);
+                    if (playerNetworkObject.OwnerClientId != ownerId)
+                    {
+                        playerNetworkObject.GetComponent<PlayerHealthController>().TakeDamage(damage, ownerId);
+                    }
+                }
+                else
+                {
+                    
+                    _crosshair.AnimateDamageResize();
                 }
             }
         }

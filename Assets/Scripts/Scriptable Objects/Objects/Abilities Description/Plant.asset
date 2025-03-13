@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 43b4a05572eeb4a4589ac39064724eab, type: 3}
+  m_Name: Plant
+  m_EditorClassIdentifier: 
+  _name: Plant
+  _rangeDescription: '<size=22><b>Fires spikes with a high rate of fire that instantly
+    hit the target.</b></size>
+
+
+    Damage: n
+
+    Fire rate: n'
+  _passiveDescription: '<size=22><b>The implementation of the principle of photosynthesis,
+    which provides the character with constant regeneration. Also, the passive ability
+    allows you to climb walls.</b></size>
+
+
+    Health regeneration per second: n
+
+    Climbing
+    speed: n'
+  _meleeDescription: '<size=22><b>Explosion of toxic cloud around the character causing
+    damage in radius.</b></size>
+
+
+    Damage: n
+
+    Radius: n
+
+    Cooldown: ns'
+  _movementDescription: '<size=22><b>The character releases a vine from the body
+    to pull itself towards an object.</b></size>
+
+
+    Vine length: n
+
+    Cooldown:
+    ns'
+  _defenseDescription: '<size=22><b>The character covers his body with spikes and
+    returns all received damage back to the enemy.</b></size>
+
+
+    Duration: ns
+
+    Damage
+    return percentage: n%
+
+    Cooldown: ns'
+  _specialDescription: '<size=22><b>Summons living mushrooms at the cost of his health,
+    which follow the enemy and explode upon contact. Can be destroyed for *x shots
+    / damage*. When mushrooms explode, they apply a slow effect to the enemy and
+    self-destruct. </b></size>
+
+
+    Mushroom speed: n
+
+    Damage: n
+
+    Slow duration:
+    ns
+
+    Explosion radius: n'

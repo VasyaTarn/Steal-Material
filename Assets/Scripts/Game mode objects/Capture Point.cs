@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UniRx;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -25,10 +26,16 @@ public class CapturePoint : NetworkBehaviour
     private GameObject _pointWaveBlue;
     private GameObject _pointWaveRed;
 
-    private bool _isLockUp = false;
+    private bool _isLockUp = true;
 
-    public event Action<ulong> OnPointCaptured;
-    public event Action<ulong> OnPointUncaptured;
+    private readonly Subject<ulong> _onPointCapturedSubject = new Subject<ulong>();
+    public IObservable<ulong> OnPointCaptured => _onPointCapturedSubject;
+
+    private readonly Subject<ulong> _onPointUncapturedSubject = new Subject<ulong>();
+    public IObservable<ulong> OnPointUncaptured => _onPointUncapturedSubject;
+
+    /*public event Action<ulong> OnPointCaptured;
+    public event Action<ulong> OnPointUncaptured;*/
 
     [SerializeField] private CaptureProgressBar _captureProgressBar;
 
@@ -48,7 +55,7 @@ public class CapturePoint : NetworkBehaviour
 
         _units.ownerId.OnValueChanged += HandleOwnerChanged;
 
-        NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
+        //NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
     }
 
     private void HandleOwnerChanged(ulong previousValue, ulong newValue)
@@ -128,6 +135,8 @@ public class CapturePoint : NetworkBehaviour
             _captureProgressBar.ProgressBarImage.color = (_units.ownerId.Value == 0) ? Color.blue : Color.red;
         }
 
+        WaitForSeconds waitTime = new WaitForSeconds(0.2f);
+
         while (_units.count.Value < _maxScore)
         {
             if (!_isLockUp)
@@ -140,12 +149,13 @@ public class CapturePoint : NetworkBehaviour
                 }*/
             }
 
-            yield return new WaitForSeconds(0.2f);
+            yield return waitTime;
         }
 
         if(_units.count.Value == _maxScore)
         {
-            OnPointCaptured?.Invoke(_units.ownerId.Value);
+            //OnPointCaptured?.Invoke(_units.ownerId.Value);
+            _onPointCapturedSubject.OnNext(_units.ownerId.Value);
 
             if(_units.ownerId.Value == 0)
             {
@@ -184,7 +194,7 @@ public class CapturePoint : NetworkBehaviour
         }
     }
 
-    private IEnumerator LockUpPoint(float duration)
+    /*private IEnumerator LockUpPoint(float duration)
     {
         LockUpPointClientRpc(true);
         _isLockUp = true;
@@ -199,17 +209,28 @@ public class CapturePoint : NetworkBehaviour
     private void LockUpPointClientRpc(bool isLocked)
     {
         _captureProgressBar.LockImage.SetActive(isLocked);
+    }*/
+
+    [Rpc(SendTo.ClientsAndHost)]
+    public void ActivatePointRpc()
+    {
+        _captureProgressBar.LockImage.SetActive(false);
+
+        _isLockUp = false;
     }
 
     private IEnumerator DecreasePoints()
     {
+        WaitForSeconds waitTime = new WaitForSeconds(0.2f);
+
         while (_units.count.Value > 0)
         {
             DecrementCountServerRpc();
-            yield return new WaitForSeconds(0.2f);
+            yield return waitTime;
         }
 
-        OnPointUncaptured?.Invoke(_units.ownerId.Value);
+        //OnPointUncaptured?.Invoke(_units.ownerId.Value);
+        _onPointUncapturedSubject.OnNext(_units.ownerId.Value);
 
         if (_players.Count > _minScore)
         {
@@ -278,18 +299,23 @@ public class CapturePoint : NetworkBehaviour
         releaseAction?.Invoke();
     }
 
-    private void OnClientConnected(ulong clientId)
+    /*private void OnClientConnected(ulong clientId)
     {
-        if(clientId == 0)
+        if (clientId == 0)
         {
             LockUpPointClientRpc(true);
             _isLockUp = true;
         }
-    }
+    }*/
 
     public override void OnDestroy()
     {
         _units.count.OnValueChanged -= HandleCountChanged;
         _units.ownerId.OnValueChanged -= HandleOwnerChanged;
+
+        /*if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+        }*/
     }
 }

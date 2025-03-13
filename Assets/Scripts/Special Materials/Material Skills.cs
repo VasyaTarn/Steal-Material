@@ -28,13 +28,11 @@ public abstract class MaterialSkills : NetworkBehaviour
     [HideInInspector] public float lastDefenseTime = 0.0f;
     [HideInInspector] public float lastSpecialTime = 0.0f;
 
-    //[HideInInspector] public bool disablingPlayerMove = false;
-    //[HideInInspector] public bool disablingPlayerShootingDuringMovementSkill = false;
-    //[HideInInspector] public bool disablingPlayerJumpAndGravity = false;
-
     protected Dictionary<string, GameObject> projectilePrefabs;
 
     protected Type materialType;
+
+    [SerializeField] protected AbilityDescription abilityDescription;
 
     public GameObject Player
     {
@@ -65,6 +63,7 @@ public abstract class MaterialSkills : NetworkBehaviour
     public virtual float specialCooldown { get; }
 
     public Type MaterialType => materialType;
+    public AbilityDescription AbilityDescription => abilityDescription;
 
 
     [Inject]

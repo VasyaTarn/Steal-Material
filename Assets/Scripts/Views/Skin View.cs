@@ -18,8 +18,8 @@ public class SkinView : NetworkBehaviour
     private PlayerArmature _currentArmatureLocal;
     private NetworkVariable<NetworkObjectReference> _currentArmature = new NetworkVariable<NetworkObjectReference>();
 
-    private Dictionary<Type, NetworkObject> keyValuePairsNetwork = new Dictionary<Type, NetworkObject>();
-    private Dictionary<Type, PlayerArmature> keyValuePairsLocal = new Dictionary<Type, PlayerArmature>();
+    private Dictionary<Type, NetworkObject> _armaturesCollecionNetwork = new Dictionary<Type, NetworkObject>();
+    private Dictionary<Type, PlayerArmature> _armaturesCollecionLocal = new Dictionary<Type, PlayerArmature>();
 
     private NetworkObject _armatureNetworkObject = null;
 
@@ -32,6 +32,9 @@ public class SkinView : NetworkBehaviour
 
     public NetworkVariable<NetworkObjectReference> CurrentArmatureNetwork => _currentArmature;
     public PlayerArmature CurrentArmatureLocal => _currentArmatureLocal;
+
+    public Dictionary<Type, NetworkObject> ArmaturesCollecionNetwork => _armaturesCollecionNetwork;
+    public Dictionary<Type, PlayerArmature> ArmaturesCollecionLocal => _armaturesCollecionLocal;
 
     private void Awake()
     {
@@ -109,7 +112,7 @@ public class SkinView : NetworkBehaviour
 
             foreach(PlayerArmature localArmature in localArmatures)
             {
-                keyValuePairsLocal.Add(localArmature.Type, localArmature);
+                _armaturesCollecionLocal.Add(localArmature.Type, localArmature);
             }  
         }
 
@@ -121,6 +124,8 @@ public class SkinView : NetworkBehaviour
         }
 
         ChangeArmatureNetwork(StarterMaterialManager.Instance.GetStarterMaterial().GetComponent<MaterialSkills>().MaterialType);
+
+        
     }
 
     public void ChangeArmatureLocal(Type newLocalArmature)
@@ -132,14 +137,14 @@ public class SkinView : NetworkBehaviour
 
         if(_currentArmatureLocal == null)
         {
-            _currentArmatureLocal = keyValuePairsLocal[newLocalArmature];
+            _currentArmatureLocal = _armaturesCollecionLocal[newLocalArmature];
             _currentArmatureLocal.gameObject.SetActive(true);
         }
         else
         {
             SpawnTransformationSmokeLocal(transform.position);
 
-            _currentArmatureLocal = keyValuePairsLocal[newLocalArmature];
+            _currentArmatureLocal = _armaturesCollecionLocal[newLocalArmature];
             StartCoroutine(ActiveteLocalArmature(0.5f));
         }
     }
@@ -152,7 +157,7 @@ public class SkinView : NetworkBehaviour
     [Rpc(SendTo.Server)]
     private void SetCurrentArmatureRpc(Type newArmature)
     {
-        _currentArmature.Value = keyValuePairsNetwork[newArmature].GetComponent<NetworkObject>();
+        _currentArmature.Value = _armaturesCollecionNetwork[newArmature].GetComponent<NetworkObject>();
     }
 
     [Rpc(SendTo.Server)]
@@ -168,9 +173,9 @@ public class SkinView : NetworkBehaviour
                 armatureNetObj.TrySetParent(NetworkManager.Singleton.ConnectedClients[ownerId].PlayerObject.GetComponent<NetworkObject>(), true);
             }
 
-            if (!keyValuePairsNetwork.ContainsKey(armature.Type) && armatureNetObj.IsSpawned)
+            if (!_armaturesCollecionNetwork.ContainsKey(armature.Type) && armatureNetObj.IsSpawned)
             {
-                keyValuePairsNetwork.Add(armature.Type, armatureNetObj);
+                _armaturesCollecionNetwork.Add(armature.Type, armatureNetObj);
             }
         }
     }
@@ -184,7 +189,7 @@ public class SkinView : NetworkBehaviour
 
             foreach (PlayerArmature armature in armatures)
             {
-                keyValuePairsLocal.Add(armature.Type, armature);
+                _armaturesCollecionLocal.Add(armature.Type, armature);
             }
         }
     }
@@ -253,7 +258,7 @@ public class SkinView : NetworkBehaviour
 
     public override void OnNetworkDespawn()
     {
-        foreach (var kvp in keyValuePairsNetwork)
+        foreach (var kvp in _armaturesCollecionNetwork)
         {
             if (kvp.Value.IsSpawned)
             {

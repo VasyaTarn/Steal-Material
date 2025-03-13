@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Xml.Serialization;
+using UniRx;
 using Unity.Multiplayer.Samples.Utilities.ClientAuthority;
 using Unity.Netcode;
 using Unity.VisualScripting;
@@ -21,7 +22,11 @@ public class PlayerSpawner : NetworkBehaviour
     [SerializeField] private GameObject _hostBarrier;
     [SerializeField] private GameObject _clientBarrier;
 
-    public event Action<PlayerHealthController> OnPlayerHealthControllerChanged;
+    private readonly Subject<PlayerHealthController> _onPlayerHealthControllerChangedSubject = new Subject<PlayerHealthController>();
+
+    public IObservable<PlayerHealthController> OnPlayerHealthControllerChanged => _onPlayerHealthControllerChangedSubject;
+
+    //public event Action<PlayerHealthController> OnPlayerHealthControllerChanged;
 
     public PlayerHealthController playerHealthController 
     {
@@ -31,7 +36,8 @@ public class PlayerSpawner : NetworkBehaviour
             if(_healthController != value )
             {
                 _healthController = value;
-                OnPlayerHealthControllerChanged?.Invoke(_healthController);
+                //OnPlayerHealthControllerChanged?.Invoke(_healthController);
+                _onPlayerHealthControllerChangedSubject.OnNext(_healthController);
             }
         }
     }
@@ -57,6 +63,11 @@ public class PlayerSpawner : NetworkBehaviour
             if(NetworkManager.Singleton.ConnectedClientsList.Count > 1)
             {
                 StartCoroutine(BarrierTimer(5f));
+                UIReferencesManager.Instance.WaitingOpponentText.gameObject.SetActive(false);
+            }
+            else
+            {
+                UIReferencesManager.Instance.WaitingOpponentText.gameObject.SetActive(true);
             }
         }
     }

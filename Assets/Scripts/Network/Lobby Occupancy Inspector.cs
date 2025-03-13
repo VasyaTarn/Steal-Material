@@ -54,4 +54,12 @@ public class LobbyOccupancyInspector : NetworkBehaviour
             joinUIView.GetErrorText().text = "Lobby is full";
         }
     }
+
+    public override void OnDestroy()
+    {
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
+        }
+    }
 }

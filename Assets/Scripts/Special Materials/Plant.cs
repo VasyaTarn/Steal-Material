@@ -27,6 +27,7 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
     private Vector3 _hookshotPosition;
     private float _hookshotSpeed = 20f;
     private float _hookshotSize;
+    private float _hookshotMaxLength = 100f;
     private float _hookshotSpeedMin = 20f;
     private float _hookshotSpeedMax = 40f;
     private float _hookshotSpeedMultiplier = 2f;
@@ -63,7 +64,7 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
 
     public override float meleeAttackCooldown { get; } = 0.5f;
     public override float rangeAttackCooldown { get; } = 0.2f;
-    public override float movementCooldown { get; } = 3f;
+    public override float movementCooldown { get; } = 0f;//3f;
     public override float defenseCooldown { get; } = 10f;
     public override float specialCooldown { get; } = 1f;
 
@@ -244,11 +245,20 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
         _hookshotSize += hookshotThrowSpeed * Time.deltaTime;
         playerObjectReferences.hookshotTransform.localScale = new Vector3(1, 1, _hookshotSize);
 
-        if (_hookshotSize >= Vector3.Distance(playerMovementController.transform.position, _hookshotPosition))
+        if(_hookshotSize > _hookshotMaxLength)
         {
-            _throwing = false;
-            playerMovementController.disablingPlayerMove = true;
-            _isHookshotMoving = true;
+            StopHookshot();
+        }
+        else
+        {
+            if (_hookshotSize >= Vector3.Distance(playerMovementController.transform.position, _hookshotPosition))
+            {
+                _throwing = false;
+                playerMovementController.disablingPlayerMove = true;
+                _isHookshotMoving = true;
+
+                Debug.Log("Test hook");
+            }
         }
     }
 
@@ -274,15 +284,24 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
         float reachedHookshotPositionDistance = 2f;
         if (Vector3.Distance(playerMovementController.transform.position, _hookshotPosition) < reachedHookshotPositionDistance)
         {
-            StopHookshot();
+            EndHookshot();
         }
+    }
+
+    private void EndHookshot()
+    {
+        playerMovementController.disablingPlayerMove = false;
+        _isHookshotMoving = false;
+        playerMovementController.ResetGravityEffect();
+
+        playerObjectReferences.hookshotTransform.gameObject.SetActive(false);
     }
 
     private void StopHookshot()
     {
         playerMovementController.disablingPlayerMove = false;
         _isHookshotMoving = false;
-        playerMovementController.ResetGravityEffect();
+        _throwing = false;
 
         playerObjectReferences.hookshotTransform.gameObject.SetActive(false);
     }

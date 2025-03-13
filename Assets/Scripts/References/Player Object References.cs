@@ -5,8 +5,6 @@ using UnityEngine;
 
 public class PlayerObjectReferences : NetworkBehaviour
 {
-    public GameObject model;
-
     public Transform projectileSpawnPoint;
 
     [Header("Plant Objects")]
@@ -21,27 +19,47 @@ public class PlayerObjectReferences : NetworkBehaviour
     public Transform stoneDefensePointPosition;
     public Transform[] stoneSpecialSmokePositions;
 
+    [Header("Fire Objects")]
+    public GameObject fireModelLocal;
+    public NetworkVariable<NetworkObjectReference> fireModelNetwork = new NetworkVariable<NetworkObjectReference>();
+
     private SkinView _skinView;
 
     private void Start()
     {
         _skinView = GetComponent<SkinView>();
 
-        _skinView.CurrentArmatureNetwork.OnValueChanged += OnArmatureChanged;
-
-        /*if(!IsServer)
-        {
-            projectileSpawnPoint = _skinView.CurrentArmatureLocal.ProjectileSpawnPoint;
-            Debug.Log("Spawn point local start");
-        }
-
-        if (_skinView.CurrentArmatureNetwork.Value.TryGet(out NetworkObject armatureNetworkObject))
-        {
-            projectileSpawnPoint = armatureNetworkObject.GetComponent<PlayerArmature>().ProjectileSpawnPoint;
-        }*/
-
         SetSpawnPointRpc(_skinView.CurrentArmatureNetwork.Value);
+
+        if (IsOwner)
+        {
+            _skinView.CurrentArmatureNetwork.OnValueChanged += OnArmatureChanged;
+
+            SetFireModelSerevRpc();
+        }
     }
+
+    [Rpc(SendTo.Server)]
+    private void SetFireModelSerevRpc()
+    {
+        fireModelNetwork.Value = _skinView.ArmaturesCollecionNetwork[Type.Fire].gameObject;
+    }
+
+    /*[Rpc(SendTo.ClientsAndHost)]
+    private void SetFireModelClientRpc(NetworkObjectReference fireModelReference)
+    {
+        if (IsClient && !IsServer)
+        {
+            if (fireModelReference.TryGet(out NetworkObject fireModelNetworkObject))
+            {
+                GetComponent<PlayerSkillsController>().enemyObjectReferences.fireModelNetwork.Value = fireModelNetworkObject.gameObject;
+            }
+        }
+        else
+        {
+            fireModelNetwork.Value = _skinView.ArmaturesCollecionNetwork[Type.Fire].gameObject;
+        }
+    }*/
 
     private void OnArmatureChanged(NetworkObjectReference previous, NetworkObjectReference current)
     {

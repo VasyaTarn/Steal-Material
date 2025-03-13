@@ -26,12 +26,14 @@ public class Relay : NetworkBehaviour
 
         //NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
 
-        AuthenticationService.Instance.SignedIn += () =>
-        {
-            Debug.Log("Signed in " + AuthenticationService.Instance.PlayerId);
-        };
+        AuthenticationService.Instance.SignedIn += OnSignedIn;
 
         await AuthenticationService.Instance.SignInAnonymouslyAsync();
+    }
+
+    private void OnSignedIn()
+    {
+        Debug.Log("Signed in " + AuthenticationService.Instance.PlayerId);
     }
 
     public async void CreateRelay()
@@ -54,7 +56,7 @@ public class Relay : NetworkBehaviour
 
             NetworkManager.Singleton.StartHost();
 
-            Debug.Log(joinCode);
+            Debug.Log("       " + joinCode);
 
             CodeDisplayer.displayCode(joinCode);
         }
@@ -126,5 +128,10 @@ public class Relay : NetworkBehaviour
         Debug.Log("OwnerClientId: " + OwnerClientId);
         Debug.Log("ClientId: " + clientId);
     }*/
+
+    public override void OnDestroy()
+    {
+        AuthenticationService.Instance.SignedIn -= OnSignedIn;
+    }
 
 }
