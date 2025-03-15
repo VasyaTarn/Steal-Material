@@ -5,25 +5,40 @@ using UnityEngine;
 
 public class PlayerObjectReferences : NetworkBehaviour
 {
-    public Transform projectileSpawnPoint;
+    [Header("General Objects")]
+    [SerializeField] private Transform _projectileSpawnPoint;
 
     [Header("Plant Objects")]
-    public Transform hookshotTransform;
-    public Transform summonedEntitySpawnPoint;
+    [SerializeField] private Transform _hookshotTransform;
+    [SerializeField] private Transform _summonedEntitySpawnPoint;
 
     [Header("Basic Objects")]
-    public Transform basicMeleePointPosition;
+    [SerializeField] private Transform _basicMeleePointPosition;
+    [SerializeField] private GameObject _basicSkillRadius;
 
     [Header("Stone Objects")]
-    public Transform stoneMeleePointPosition;
-    public Transform stoneDefensePointPosition;
-    public Transform[] stoneSpecialSmokePositions;
+    [SerializeField] private Transform _stoneMeleePointPosition;
+    [SerializeField] private Transform _stoneDefensePointPosition;
+    [SerializeField] private Transform[] _stoneSpecialSmokePositions;
 
     [Header("Fire Objects")]
-    public GameObject fireModelLocal;
-    public NetworkVariable<NetworkObjectReference> fireModelNetwork = new NetworkVariable<NetworkObjectReference>();
+    [SerializeField] private GameObject _fireModelLocal;
+    private NetworkVariable<NetworkObjectReference> _fireModelNetwork = new NetworkVariable<NetworkObjectReference>();
+    [SerializeField] private GameObject _fireSkillRadius;
 
     private SkinView _skinView;
+
+    public Transform ProjectileSpawnPoint => _projectileSpawnPoint;
+    public Transform HookshotTransform => _hookshotTransform;
+    public Transform SummonedEntitySpawnPoint => _summonedEntitySpawnPoint;
+    public Transform BasicMeleePointPosition => _basicMeleePointPosition;
+    public Transform StoneMeleePointPosition => _stoneMeleePointPosition;
+    public Transform StoneDefensePointPosition => _stoneDefensePointPosition;
+    public Transform[] StoneSpecialSmokePositions => _stoneSpecialSmokePositions;
+    public GameObject FireModelLocal => _fireModelLocal;
+    public NetworkVariable<NetworkObjectReference> FireModelNetwork => _fireModelNetwork;
+    public GameObject BasicSkillRadius => _basicSkillRadius;
+    public GameObject FireSkillRadius => _fireSkillRadius;
 
     private void Start()
     {
@@ -42,7 +57,7 @@ public class PlayerObjectReferences : NetworkBehaviour
     [Rpc(SendTo.Server)]
     private void SetFireModelSerevRpc()
     {
-        fireModelNetwork.Value = _skinView.ArmaturesCollecionNetwork[Type.Fire].gameObject;
+        _fireModelNetwork.Value = _skinView.ArmaturesCollecionNetwork[Type.Fire].gameObject;
     }
 
     /*[Rpc(SendTo.ClientsAndHost)]
@@ -65,7 +80,7 @@ public class PlayerObjectReferences : NetworkBehaviour
     {
         if (!IsServer)
         {
-            projectileSpawnPoint = _skinView.CurrentArmatureLocal.ProjectileSpawnPoint;
+            _projectileSpawnPoint = _skinView.CurrentArmatureLocal.ProjectileSpawnPoint;
         }
 
         SetSpawnPointRpc(current);
@@ -76,7 +91,7 @@ public class PlayerObjectReferences : NetworkBehaviour
     {
         if (current.TryGet(out NetworkObject armatureNetworkObject))
         {
-            projectileSpawnPoint = armatureNetworkObject.GetComponent<PlayerArmature>().ProjectileSpawnPoint;
+            _projectileSpawnPoint = armatureNetworkObject.GetComponent<PlayerArmature>().ProjectileSpawnPoint;
         }
     }
 

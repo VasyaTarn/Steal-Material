@@ -3,8 +3,10 @@ using System.Collections;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.VFX;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
-public class Basic : MaterialSkills, ISkinMaterialChanger
+public class Basic : MaterialSkills, ISkinMaterialChanger, IUpdateHandler
 {
     private GameObject _bulletPrefab;
 
@@ -23,6 +25,8 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
     private bool _sprintStatus = false;
     private bool _inBlock = false;
 
+    private float _specialRaduis = 10f;
+
     public override float meleeAttackCooldown { get; } = 1f;
     public override float rangeAttackCooldown { get; } = 1f;
     public override float movementCooldown { get; } = 0f;
@@ -31,14 +35,28 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
 
     public override string projectilePrefabKey { get; } = ProjectileMapper.GetProjectileKey(ProjectileType.Basic);
 
+
     private void Start()
     {
         materialType = Type.Basic;
 
         _layerForSpecial = LayerMask.GetMask("Player");
-        _bulletPrefab = projectilePrefabs[projectilePrefabKey];
 
-        _claw = Resources.Load<GameObject>("Basic/ClawAttack");
+        //_bulletPrefab = projectilePrefabs[projectilePrefabKey];
+
+        Addressables.LoadAssetAsync<GameObject>("ClawAttack").Completed += handle =>
+        {
+            if (handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                _claw = handle.Result;
+            }
+            else
+            {
+                Debug.LogError("Failed to load ClawAttack");
+            }
+        };
+
+        //_claw = Resources.Load<GameObject>("Basic/ClawAttack");
     }
 
     #region Melee
@@ -50,14 +68,16 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
             DisableDefenseDuringOtherSkills();
         }
 
+        playerAnimationController.PlayTriggerAnimation("BasicMeleeAttack");
+
         if (!IsServer)
         {
-            SpawnClawLocal(playerObjectReferences.basicMeleePointPosition.position);
+            SpawnClawLocal(playerObjectReferences.BasicMeleePointPosition.position);
         }
 
-        SpawnClawServerRpc(playerObjectReferences.basicMeleePointPosition.position, ownerId);
+        SpawnClawServerRpc(playerObjectReferences.BasicMeleePointPosition.position, ownerId);
 
-        Collider[] hitColliders = Physics.OverlapSphere(playerObjectReferences.basicMeleePointPosition.position, 0.5f, LayerMask.GetMask("Player"));
+        Collider[] hitColliders = Physics.OverlapSphere(playerObjectReferences.BasicMeleePointPosition.position, 0.5f, LayerMask.GetMask("Player"));
 
         foreach (Collider collider in hitColliders)
         {
@@ -158,14 +178,19 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
 
         if (!IsServer)
         {
-            SpawnProjectileLocal(raycastHit.point, playerObjectReferences.projectileSpawnPoint.position);
+            SpawnProjectileLocal(raycastHit.point, playerObjectReferences.ProjectileSpawnPoint.position);
         }
 
-        SpawnProjectileServerRpc(raycastHit.point, playerObjectReferences.projectileSpawnPoint.position, ownerId);
+        SpawnProjectileServerRpc(raycastHit.point, playerObjectReferences.ProjectileSpawnPoint.position, ownerId);
     }
 
     private void SpawnProjectileLocal(Vector3 raycastPoint, Vector3 projectileSpawnPoint)
     {
+        if (_bulletPrefab == null)
+        {
+            _bulletPrefab = projectilePrefabs[projectilePrefabKey];
+        }
+
         Vector3 aimDir = (raycastPoint - projectileSpawnPoint).normalized;
 
         if (_projectilePool == null)
@@ -218,6 +243,11 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
     [Rpc(SendTo.Server)]
     private void SpawnProjectileServerRpc(Vector3 raycastPoint, Vector3 projectileSpawnPoint, ulong ownerId)
     {
+        if (_bulletPrefab == null)
+        {
+            _bulletPrefab = projectilePrefabs[projectilePrefabKey];
+        }
+
         Vector3 aimDir = (raycastPoint - projectileSpawnPoint).normalized;
 
         NetworkObject projectile = NetworkObjectPool.Singleton.GetNetworkObject(_bulletPrefab, projectileSpawnPoint);
@@ -320,11 +350,13 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
 
             _sprintStatus = !_sprintStatus;
 
+            playerAnimationController.SetSprintStatus(_sprintStatus);
+
             if (IsServer)
             {
                 if (_sprintStatus)
                 {
-                    playerMovementController.currentMovementStats.moveSpeed.Value = playerMovementController.baseMovementStats.moveSpeed * 2;
+                    playerMovementController.currentMovementStats.moveSpeed.Value = playerMovementController.baseMovementStats.moveSpeed * 1.5f;
                 }
                 else
                 {
@@ -335,7 +367,7 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
             {
                 if (_sprintStatus)
                 {
-                    playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed * 2;
+                    playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed * 1.5f;
                 }
                 else
                 {
@@ -354,7 +386,7 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
 
         if (sprintStatus)
         {
-            player.currentMovementStats.moveSpeed.Value = player.baseMovementStats.moveSpeed * 2;
+            player.currentMovementStats.moveSpeed.Value = player.baseMovementStats.moveSpeed * 1.5f;
         }
         else
         {
@@ -444,7 +476,7 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
 
     public override void Special()
     {
-        Collider[] hitColliders = Physics.OverlapSphere(Player.transform.position, 10f, _layerForSpecial);
+        Collider[] hitColliders = Physics.OverlapSphere(Player.transform.position, _specialRaduis, _layerForSpecial);
 
         foreach (var hitCollider in hitColliders)
         {
@@ -490,6 +522,8 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
         {
             _sprintStatus = false;
 
+            playerAnimationController.SetSprintStatus(_sprintStatus);
+
             if (IsServer)
             {
                 playerMovementController.currentMovementStats.moveSpeed.Value = playerMovementController.baseMovementStats.moveSpeed;
@@ -503,5 +537,21 @@ public class Basic : MaterialSkills, ISkinMaterialChanger
         }
 
         UIReferencesManager.Instance.EnemyMaterialDisplay.text = "";
+
+        if (playerObjectReferences.BasicSkillRadius.activeSelf)
+        {
+            playerObjectReferences.BasicSkillRadius.SetActive(false);
+        }
+    }
+
+    public void HandleUpdate()
+    {
+        if(!playerObjectReferences.BasicSkillRadius.activeSelf)
+        {
+            float visualSkillRaduis = _specialRaduis * 2f;
+            playerObjectReferences.BasicSkillRadius.transform.localScale = new Vector3(visualSkillRaduis, visualSkillRaduis, visualSkillRaduis);
+
+            playerObjectReferences.BasicSkillRadius.SetActive(true);
+        }
     }
 }

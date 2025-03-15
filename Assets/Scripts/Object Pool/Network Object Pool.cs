@@ -7,6 +7,9 @@ using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Pool;
 
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
+
 public class NetworkObjectPool : NetworkBehaviour
 {
     public static NetworkObjectPool Singleton { get; private set; }
@@ -15,7 +18,7 @@ public class NetworkObjectPool : NetworkBehaviour
 
     private HashSet<GameObject> _prefabs = new HashSet<GameObject>();
 
-    public Dictionary<GameObject, ObjectPool<NetworkObject>> pooledObjects = new Dictionary<GameObject, ObjectPool<NetworkObject>>();
+    public Dictionary<string, ObjectPool<NetworkObject>> pooledObjects = new Dictionary<string, ObjectPool<NetworkObject>>();
 
     private Vector3 _spawnPoint;
     private ulong _clientId;
@@ -46,7 +49,7 @@ public class NetworkObjectPool : NetworkBehaviour
         foreach(var prefab in _prefabs)
         {
             NetworkManager.Singleton.PrefabHandler.RemoveHandler(prefab);
-            pooledObjects[prefab].Clear();
+            pooledObjects[prefab.name].Clear();
         }
 
         pooledObjects.Clear();
@@ -69,19 +72,20 @@ public class NetworkObjectPool : NetworkBehaviour
     public NetworkObject GetNetworkObject(GameObject prefab, Vector3 position)
     {
         _spawnPoint = position;
-        var networkObject = pooledObjects[prefab].Get();
+
+        var networkObject = pooledObjects[prefab.name].Get();
 
         return networkObject;
     }
 
     public void ReturnNetworkObject(NetworkObject networkObject, GameObject prefab)
     {
-        if (!pooledObjects.ContainsKey(prefab))
+        if (!pooledObjects.ContainsKey(prefab.name))
         {
             return;
         }
 
-        pooledObjects[prefab].Release(networkObject);
+        pooledObjects[prefab.name].Release(networkObject);
     }
 
     private void RegisterPrefabInternal(GameObject prefab, int prewarmCount)
@@ -113,17 +117,17 @@ public class NetworkObjectPool : NetworkBehaviour
 
         _prefabs.Add(prefab);
 
-        pooledObjects[prefab] = new ObjectPool<NetworkObject>(CreateFunc, ActionOnGet, ActionOnRelease, ActionOnDestroy, false, prewarmCount);
+        pooledObjects[prefab.name] = new ObjectPool<NetworkObject>(CreateFunc, ActionOnGet, ActionOnRelease, ActionOnDestroy, false, prewarmCount);
 
         var prewarmNetworkObjects = new List<NetworkObject>();
 
         for(int i = 0; i < prewarmCount; i++)
         {
-            prewarmNetworkObjects.Add(pooledObjects[prefab].Get());
+            prewarmNetworkObjects.Add(pooledObjects[prefab.name].Get());
         }
         foreach (var networkObject in prewarmNetworkObjects)
         {
-            pooledObjects[prefab].Release(networkObject);
+            pooledObjects[prefab.name].Release(networkObject);
         }
 
         NetworkManager.Singleton.PrefabHandler.AddHandler(prefab, new PooledPrefabInstanceHandler(prefab, this));

@@ -1,11 +1,9 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using Unity.Netcode;
-using Unity.VisualScripting;
 using UnityEngine;
-using UnityEngine.EventSystems;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
 {
@@ -64,7 +62,7 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
 
     public override float meleeAttackCooldown { get; } = 0.5f;
     public override float rangeAttackCooldown { get; } = 0.2f;
-    public override float movementCooldown { get; } = 0f;//3f;
+    public override float movementCooldown { get; } = 3f;
     public override float defenseCooldown { get; } = 10f;
     public override float specialCooldown { get; } = 1f;
 
@@ -75,8 +73,21 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
     {
         materialType = Type.Plant;
 
-        _bulletTrail = projectilePrefabs[projectilePrefabKey].GetComponent<TrailRenderer>();
-        _summonedPlant = Resources.Load<GameObject>("Plant/Summon");
+        //_bulletTrail = projectilePrefabs[projectilePrefabKey].GetComponent<TrailRenderer>();
+
+        Addressables.LoadAssetAsync<GameObject>("Summon").Completed += handle =>
+        {
+            if (handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                _summonedPlant = handle.Result;
+            }
+            else
+            {
+                Debug.LogError("Failed to load Summon");
+            }
+        };
+
+        //_summonedPlant = Resources.Load<GameObject>("Plant/Summon");
     }
 
     #region Melee
@@ -103,10 +114,10 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
     {
         if (!IsServer)
         {
-            SpawnProjectileLocal(raycastHit.point, playerObjectReferences.projectileSpawnPoint.position);
+            SpawnProjectileLocal(raycastHit.point, playerObjectReferences.ProjectileSpawnPoint.position);
         }
 
-        SpawnProjectileServerRpc(raycastHit.point, playerObjectReferences.projectileSpawnPoint.position, ownerId);
+        SpawnProjectileServerRpc(raycastHit.point, playerObjectReferences.ProjectileSpawnPoint.position, ownerId);
 
         if (raycastHit.collider.gameObject.CompareTag("Player"))
         {
@@ -116,6 +127,11 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
 
     private void SpawnProjectileLocal(Vector3 raycastPoint, Vector3 projectileSpawnPoint)
     {
+        if (_bulletTrail == null)
+        {
+            _bulletTrail = projectilePrefabs[projectilePrefabKey].GetComponent<TrailRenderer>();
+        }
+
         Vector3 aimDir = (raycastPoint - projectileSpawnPoint).normalized;
 
         if (_projectilePool == null)
@@ -134,6 +150,11 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
     [Rpc(SendTo.Server)]
     private void SpawnProjectileServerRpc(Vector3 raycastPoint, Vector3 projectileSpawnPoint, ulong ownerId)
     {
+        if (_bulletTrail == null)
+        {
+            _bulletTrail = projectilePrefabs[projectilePrefabKey].GetComponent<TrailRenderer>();
+        }
+
         Vector3 aimDir = (raycastPoint - projectileSpawnPoint).normalized;
 
         NetworkObject projectile = NetworkObjectPool.Singleton.GetNetworkObject(_bulletTrail.gameObject, projectileSpawnPoint);
@@ -231,19 +252,19 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
         {
             _hookshotPosition = hit.point;
             _hookshotSize = 0f;
-            playerObjectReferences.hookshotTransform.gameObject.SetActive(true);
-            playerObjectReferences.hookshotTransform.localScale = Vector3.zero;
+            playerObjectReferences.HookshotTransform.gameObject.SetActive(true);
+            playerObjectReferences.HookshotTransform.localScale = Vector3.zero;
             _throwing = true;
         }
     }
 
     private void HandleHookshotThrow()
     {
-        playerObjectReferences.hookshotTransform.LookAt(_hookshotPosition);
+        playerObjectReferences.HookshotTransform.LookAt(_hookshotPosition);
 
         float hookshotThrowSpeed = 100f;
         _hookshotSize += hookshotThrowSpeed * Time.deltaTime;
-        playerObjectReferences.hookshotTransform.localScale = new Vector3(1, 1, _hookshotSize);
+        playerObjectReferences.HookshotTransform.localScale = new Vector3(1, 1, _hookshotSize);
 
         if(_hookshotSize > _hookshotMaxLength)
         {
@@ -274,11 +295,11 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
 
         if (_hookshotSize <= 0)
         {
-            playerObjectReferences.hookshotTransform.localScale = Vector3.zero;
+            playerObjectReferences.HookshotTransform.localScale = Vector3.zero;
         }
         else
         {
-            playerObjectReferences.hookshotTransform.localScale = new Vector3(1, 1, _hookshotSize);
+            playerObjectReferences.HookshotTransform.localScale = new Vector3(1, 1, _hookshotSize);
         }
 
         float reachedHookshotPositionDistance = 2f;
@@ -294,7 +315,7 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
         _isHookshotMoving = false;
         playerMovementController.ResetGravityEffect();
 
-        playerObjectReferences.hookshotTransform.gameObject.SetActive(false);
+        playerObjectReferences.HookshotTransform.gameObject.SetActive(false);
     }
 
     private void StopHookshot()
@@ -303,7 +324,7 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
         _isHookshotMoving = false;
         _throwing = false;
 
-        playerObjectReferences.hookshotTransform.gameObject.SetActive(false);
+        playerObjectReferences.HookshotTransform.gameObject.SetActive(false);
     }
 
     #endregion
@@ -347,10 +368,10 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger
     {
         if (!IsServer)
         {
-            SpawnSummonedEntityLocal(playerObjectReferences.summonedEntitySpawnPoint.position);
+            SpawnSummonedEntityLocal(playerObjectReferences.SummonedEntitySpawnPoint.position);
         }
 
-        SpawnSummonedEntityServerRpc(playerObjectReferences.summonedEntitySpawnPoint.position, ownerId);
+        SpawnSummonedEntityServerRpc(playerObjectReferences.SummonedEntitySpawnPoint.position, ownerId);
     }
 
     private void SpawnSummonedEntityLocal(Vector3 summonedEntitySpawnPoint)

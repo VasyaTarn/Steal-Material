@@ -3,6 +3,9 @@ using Unity.Netcode;
 using UnityEngine.UI;
 using System;
 using UniRx;
+using UnityEngine.Rendering.HighDefinition;
+using UnityEngine.Rendering;
+using DG.Tweening;
 
 public class PlayerHealthController : NetworkBehaviour
 {
@@ -18,6 +21,11 @@ public class PlayerHealthController : NetworkBehaviour
     private Image _healthBarImage;
 
     private Crosshair _crosshair;
+
+    // Damage effect
+    private Vignette _vignette; 
+    private float _duration = 0.2f;
+    private Tween vignetteTween;
 
     private void Start()
     {
@@ -36,11 +44,33 @@ public class PlayerHealthController : NetworkBehaviour
 
         _crosshair = UIReferencesManager.Instance.Crosshair;
 
+        if (UIReferencesManager.Instance.Vignette.profile.TryGet(out Vignette vignette))
+        {
+            _vignette = vignette;
+        }
+
         currentHp.OnValueChanged += OnHealthChanged;
     }
 
     private void OnHealthChanged(float oldValue, float newValue)
     {
+        if (IsOwner)
+        {
+            vignetteTween?.Kill();
+
+            vignetteTween = DOTween.To(() => _vignette.intensity.value,
+                                       x => _vignette.intensity.value = x,
+                                       0.2f, _duration)
+                .SetLoops(2, LoopType.Yoyo)
+                .SetEase(Ease.InOutSine)
+                .OnComplete(() =>
+                {
+                    _vignette.intensity.value = 0;
+                    vignetteTween = null;         
+                });
+
+        }
+
         UpdateHealthBar();
     }
 

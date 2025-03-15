@@ -2,6 +2,8 @@ using Cinemachine;
 using UnityEngine;
 using Unity.Netcode;
 using System.Linq;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 public class PlayerSkillsController : NetworkBehaviour
 {
@@ -88,7 +90,7 @@ public class PlayerSkillsController : NetworkBehaviour
 
                 if (IsOwner)
                 {
-                    if (_inputs.shoot && _playerObjectReferences.projectileSpawnPoint != null && Time.time >= _skin.skills.lastRangeAttackTime + _skin.skills.rangeAttackCooldown && !disablingPlayerShootingDuringMovementSkill && !_playerMovementController.currentMovementStats.isStuned.Value)
+                    if (_inputs.shoot && _playerObjectReferences.ProjectileSpawnPoint != null && Time.time >= _skin.skills.lastRangeAttackTime + _skin.skills.rangeAttackCooldown && !disablingPlayerShootingDuringMovementSkill && !_playerMovementController.currentMovementStats.isStuned.Value)
                     {
                         if (_performer.PerformRaycast(out RaycastHit raycastHit))
                         {

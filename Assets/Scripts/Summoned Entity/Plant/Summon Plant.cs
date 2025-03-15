@@ -5,6 +5,11 @@ using UnityEngine;
 
 public class SummonPlant : SummonedEntity, IAttackable
 {
+    private void OnEnable()
+    {
+        StartCoroutine(DeathTimer(5f));
+    }
+
     private void Update()
     {
         if (owner.enemy != null)
@@ -36,6 +41,13 @@ public class SummonPlant : SummonedEntity, IAttackable
             owner.enemyHealthController.TakeDamage(damage);
             owner.enemyMovementController.statusEffectsController.AddBuff(new Slowdown(0.5f, 2f));
         }
+
+        onDeathCallback?.Invoke();
+    }
+
+    private IEnumerator DeathTimer(float duration)
+    {
+        yield return new WaitForSeconds(duration);
 
         onDeathCallback?.Invoke();
     }

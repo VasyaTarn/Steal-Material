@@ -12,7 +12,7 @@ public abstract class MaterialSkills : NetworkBehaviour
     public GameObject player;
     public Action<GameObject> OnPlayerChanged;
 
-    private Dictionary<GameObject, (Inputs inputs, PlayerMovementController movement, PlayerHealthController health, PlayerSkillsController skills, SkinContoller skin, ClientNetworkTransform networkTransform, PlayerObjectReferences playerObjectReferences)> _playerComponents = new Dictionary<GameObject, (Inputs, PlayerMovementController, PlayerHealthController, PlayerSkillsController, SkinContoller, ClientNetworkTransform, PlayerObjectReferences)>();
+    private Dictionary<GameObject, (Inputs inputs, PlayerMovementController movement, PlayerHealthController health, PlayerSkillsController skills, SkinContoller skin, ClientNetworkTransform networkTransform, PlayerObjectReferences playerObjectReferences, PlayerAnimationController playerAnimation)> _playerComponents = new Dictionary<GameObject, (Inputs, PlayerMovementController, PlayerHealthController, PlayerSkillsController, SkinContoller, ClientNetworkTransform, PlayerObjectReferences, PlayerAnimationController)>();
 
     protected Inputs inputs;
     protected PlayerMovementController playerMovementController;
@@ -21,6 +21,7 @@ public abstract class MaterialSkills : NetworkBehaviour
     protected SkinContoller skinContoller;
     protected ClientNetworkTransform playerNetworkTransform;
     protected PlayerObjectReferences playerObjectReferences;
+    protected PlayerAnimationController playerAnimationController;
 
     [HideInInspector] public float lastMeleeAttackTime = 0.0f;
     [HideInInspector] public float lastRangeAttackTime = 0.0f;
@@ -95,7 +96,8 @@ public abstract class MaterialSkills : NetworkBehaviour
                 player.GetComponent<PlayerSkillsController>(),
                 player.GetComponent<SkinContoller>(),
                 player.GetComponent<ClientNetworkTransform>(),
-                player.GetComponent<PlayerObjectReferences>()
+                player.GetComponent<PlayerObjectReferences>(),
+                player.GetComponent<PlayerAnimationController>()
             );
 
             _playerComponents[player] = components;
@@ -108,5 +110,6 @@ public abstract class MaterialSkills : NetworkBehaviour
         skinContoller = components.skin;
         playerNetworkTransform = components.networkTransform;
         playerObjectReferences = components.playerObjectReferences;
+        playerAnimationController = components.playerAnimation;
     }
 }

@@ -75,11 +75,6 @@ public class SkinContoller : NetworkBehaviour
                 {
                     if (Time.time >= _lastStealTime + _stealCooldown)
                     {
-                        if (skills is ISkinMaterialChanger skin)
-                        {
-                            skin.ChangeSkinAction();
-                        }
-
                         ChangeSkin(hit.collider.gameObject);
                         skills.ownerId = OwnerClientId;
                         _playerHealthController.OnDamageTaken = null;
@@ -129,7 +124,12 @@ public class SkinContoller : NetworkBehaviour
 
     public void ChangeSkin(GameObject materialObject)
     {
-        if(skinMaterial == null)
+        if (skills is ISkinMaterialChanger skinChange)
+        {
+            skinChange.ChangeSkinAction();
+        }
+
+        if (skinMaterial == null)
         {
             SetSkinMaterial(materialObject);
         }
@@ -157,6 +157,11 @@ public class SkinContoller : NetworkBehaviour
         }
 
         skills.Player = gameObject;
+
+        if(skills is IActivateSkinMaterialHandler skinActive)
+        {
+            skinActive.ActivateSkinMaterialAction();
+        }
     }
 
     private void SetSkinMaterial(GameObject skinMaterial)

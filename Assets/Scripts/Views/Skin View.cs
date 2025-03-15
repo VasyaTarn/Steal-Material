@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 public enum ArmatureChangeSource
 {
@@ -38,7 +40,19 @@ public class SkinView : NetworkBehaviour
 
     private void Awake()
     {
-        _transformationSmoke = Resources.Load<GameObject>("General/Transformation_Smoke");
+        Addressables.LoadAssetAsync<GameObject>("Transformation_Smoke").Completed += handle =>
+        {
+            if (handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                _transformationSmoke = handle.Result;
+            }
+            else
+            {
+                Debug.LogError("Failed to load Transformation_Smoke");
+            }
+        };
+
+        //_transformationSmoke = Resources.Load<GameObject>("General/Transformation_Smoke");
 
         _currentArmature.OnValueChanged += HandleArmatureChange;
     }

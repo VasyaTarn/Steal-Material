@@ -1,5 +1,7 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.UI;
 using Zenject;
 
@@ -31,9 +33,12 @@ public class UIReferencesManager : MonoBehaviour
     [Header("Other")]
     [SerializeField] private CanvasGroup _roundOverScreen;
     [SerializeField] private TMP_Text _waitingOpponentText;
+    [SerializeField] private Volume _vignette;
 
-    [Header("Ability Descriptor")]
+    [Header("Abilities")]
     [SerializeField] private GameObject _abilityDescriptor;
+    [SerializeField] private GameObject _fireChargeDisplayer;
+    [SerializeField] private GameObject[] _fillChargeObjects;
 
     [Header("Crosshair")]
     [SerializeField] private Crosshair _crossHair;
@@ -54,6 +59,9 @@ public class UIReferencesManager : MonoBehaviour
     public TMP_Text ClientRoundScore => _clientRoundScore;
     public GameObject AbilityDescriptor => _abilityDescriptor;
     public Crosshair Crosshair => _crossHair;
+    public Volume Vignette => _vignette;
+    public GameObject[] FillChargeObjects => _fillChargeObjects;
+    public GameObject FireChargeDisplayer => _fireChargeDisplayer;
 
 
     [Inject]

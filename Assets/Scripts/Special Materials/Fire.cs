@@ -1,15 +1,12 @@
-using System;
 using System.Collections;
-using System.Drawing;
-using System.Runtime.CompilerServices;
 using Unity.Netcode;
 using UnityEngine;
-using static UnityEngine.UI.Image;
-using UnityEngine.UIElements;
 using System.Collections.Generic;
-using System.Linq;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
+using Unity.VisualScripting;
 
-public class Fire : MaterialSkills
+public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActivateSkinMaterialHandler
 {
     private GameObject _bulletPrefab;
 
@@ -34,6 +31,9 @@ public class Fire : MaterialSkills
     private int _currentChargeStage;
 
     private float _astralDuration = 2f;
+
+    private float _passiveRadius = 10f;
+
     public override float meleeAttackCooldown { get; } = 0.5f;
     public override float rangeAttackCooldown { get; } = 0.2f;
     public override float movementCooldown { get; } = 2f;
@@ -48,9 +48,22 @@ public class Fire : MaterialSkills
     {
         materialType = Type.Fire;
 
-        _wisp = Resources.Load<GameObject>("Fire/Wisp");
+        Addressables.LoadAssetAsync<GameObject>("Wisp").Completed += handle =>
+        {
+            if (handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                _wisp = handle.Result;
+            }
+            else
+            {
+                Debug.LogError("Failed to load Wisp");
+            }
+        };
+
+        //_wisp = Resources.Load<GameObject>("Fire/Wisp");
+
         _currentburnDamage = _minBurnDamage;
-        _bulletPrefab = projectilePrefabs[projectilePrefabKey];
+        //_bulletPrefab = projectilePrefabs[projectilePrefabKey];
     }
 
     #region Melee
@@ -71,13 +84,18 @@ public class Fire : MaterialSkills
     {
         _isRunningChargeCoroutine = true;
         playerMovementController.disablingPlayerMove = true;
+        playerAnimationController.DisablingPlayerAnimator = true;
 
         yield return new WaitForSeconds(time);
 
         playerMovementController.disablingPlayerMove = false;
         _currentburnDamage *= 1.5f;
         _currentChargeStage++;
+
+        UIReferencesManager.Instance.FillChargeObjects[_currentChargeStage - 1].SetActive(true);
+
         _isRunningChargeCoroutine = false;
+        playerAnimationController.DisablingPlayerAnimator = false;
 
     }
 
@@ -86,6 +104,13 @@ public class Fire : MaterialSkills
         if (_currentburnDamage != _minBurnDamage && _currentChargeStage != 0)
         {
             _currentChargeStage = 0;
+
+            foreach(GameObject stage in UIReferencesManager.Instance.FillChargeObjects)
+            {
+                Debug.Log("Charge active false");
+                stage.SetActive(false);
+            }
+
             _currentburnDamage = _minBurnDamage;
         }
 
@@ -99,14 +124,19 @@ public class Fire : MaterialSkills
     {
         if (!IsServer)
         {
-            SpawnProjectileLocal(raycastHit.point, playerObjectReferences.projectileSpawnPoint.position);
+            SpawnProjectileLocal(raycastHit.point, playerObjectReferences.ProjectileSpawnPoint.position);
         }
 
-        SpawnProjectileServerRpc(raycastHit.point, playerObjectReferences.projectileSpawnPoint.position, ownerId);
+        SpawnProjectileServerRpc(raycastHit.point, playerObjectReferences.ProjectileSpawnPoint.position, ownerId);
     }
 
     private void SpawnProjectileLocal(Vector3 raycastPoint, Vector3 projectileSpawnPoint)
     {
+        if (_bulletPrefab == null)
+        {
+            _bulletPrefab = projectilePrefabs[projectilePrefabKey];
+        }
+
         Vector3 aimDir = (raycastPoint - projectileSpawnPoint).normalized;
 
         if (_projectilePool == null)
@@ -158,6 +188,11 @@ public class Fire : MaterialSkills
     [Rpc(SendTo.Server)]
     private void SpawnProjectileServerRpc(Vector3 raycastPoint, Vector3 projectileSpawnPoint, ulong ownerId)
     {
+        if (_bulletPrefab == null)
+        {
+            _bulletPrefab = projectilePrefabs[projectilePrefabKey];
+        }
+
         Vector3 aimDir = (raycastPoint - projectileSpawnPoint).normalized;
 
         NetworkObject projectile = NetworkObjectPool.Singleton.GetNetworkObject(_bulletPrefab, projectileSpawnPoint);
@@ -285,14 +320,14 @@ public class Fire : MaterialSkills
 
         if (IsServer)
         {
-            if (playerObjectReferences.fireModelNetwork.Value.TryGet(out NetworkObject fireModel))
+            if (playerObjectReferences.FireModelNetwork.Value.TryGet(out NetworkObject fireModel))
             {
                 fireModel.gameObject.SetActive(false);
             }
         }
         else
         {
-            playerObjectReferences.fireModelLocal.SetActive(false);
+            playerObjectReferences.FireModelLocal.SetActive(false);
         }
     }
 
@@ -300,14 +335,14 @@ public class Fire : MaterialSkills
     {
         if (IsServer)
         {
-            if (playerObjectReferences.fireModelNetwork.Value.TryGet(out NetworkObject fireModel))
+            if (playerObjectReferences.FireModelNetwork.Value.TryGet(out NetworkObject fireModel))
             {
                 fireModel.gameObject.SetActive(true);
             }
         }
         else
         {
-            playerObjectReferences.fireModelLocal.SetActive(true);
+            playerObjectReferences.FireModelLocal.SetActive(true);
         }
 
         playerHealthController.healthStats.isImmortal = false;
@@ -324,18 +359,14 @@ public class Fire : MaterialSkills
     [Rpc(SendTo.ClientsAndHost)]
     private void UpdateAstralStateClientRpc(bool state, ulong id, NetworkObjectReference playerObjectReference)
     {
-        Debug.Log("id: " + id);
-        Debug.Log("ownerId: " + ownerId);
-
-        if (id != ownerId || (IsClient && !IsServer && id == ownerId))
+        if (id != ownerId || (IsClient && !IsServer && (id == 0 && ownerId == 0)))
         {
             if (state)
             {
                 if (playerObjectReference.TryGet(out NetworkObject playerObject))
                 {
-                    if (playerObject.GetComponent<PlayerObjectReferences>().fireModelNetwork.Value.TryGet(out NetworkObject fireModel))
+                    if (playerObject.GetComponent<PlayerObjectReferences>().FireModelNetwork.Value.TryGet(out NetworkObject fireModel))
                     {
-                        Debug.Log("Test1");
                         fireModel.gameObject.SetActive(false);
                     }
                 }
@@ -344,9 +375,8 @@ public class Fire : MaterialSkills
             {
                 if (playerObjectReference.TryGet(out NetworkObject playerObject))
                 {
-                    if (playerObject.GetComponent<PlayerObjectReferences>().fireModelNetwork.Value.TryGet(out NetworkObject fireModel))
+                    if (playerObject.GetComponent<PlayerObjectReferences>().FireModelNetwork.Value.TryGet(out NetworkObject fireModel))
                     {
-                        Debug.Log("Test1");
                         fireModel.gameObject.SetActive(true);
                     }
                 }
@@ -464,7 +494,7 @@ public class Fire : MaterialSkills
 
     public override void Passive()
     {
-        Collider[] hitColliders = Physics.OverlapSphere(Player.transform.position, 10f, LayerMask.GetMask("Player"));
+        Collider[] hitColliders = Physics.OverlapSphere(Player.transform.position, _passiveRadius, LayerMask.GetMask("Player"));
 
         foreach (Collider collider in hitColliders)
         {
@@ -490,4 +520,39 @@ public class Fire : MaterialSkills
     }
 
     #endregion
+
+    public void ChangeSkinAction()
+    {
+        // Charge lvl reset
+        _currentChargeStage = 0;
+
+        foreach (GameObject stage in UIReferencesManager.Instance.FillChargeObjects)
+        {
+            stage.SetActive(false);
+        }
+
+        _currentburnDamage = _minBurnDamage;
+        UIReferencesManager.Instance.FireChargeDisplayer.SetActive(false);
+
+        if (playerObjectReferences.FireSkillRadius.activeSelf)
+        {
+            playerObjectReferences.FireSkillRadius.SetActive(false);
+        }
+    }
+
+    public void HandleUpdate()
+    {
+        if (!playerObjectReferences.FireSkillRadius.activeSelf)
+        {
+            float visualSkillRaduis = _passiveRadius * 2f;
+            playerObjectReferences.FireSkillRadius.transform.localScale = new Vector3(visualSkillRaduis, visualSkillRaduis, visualSkillRaduis);
+
+            playerObjectReferences.FireSkillRadius.SetActive(true);
+        }
+    }
+
+    public void ActivateSkinMaterialAction()
+    {
+        UIReferencesManager.Instance.FireChargeDisplayer.SetActive(true);
+    }
 }

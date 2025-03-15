@@ -1,6 +1,9 @@
 using DG.Tweening;
+using System;
 using System.Collections;
+using System.Runtime.CompilerServices;
 using UniRx;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -20,8 +23,8 @@ public class GameScoreManager : NetworkBehaviour
     private float _hostFillScore = 0;
     private float _clientFillScore = 0;
 
-    private float _hostRoundScore = 0;
-    private float _clientRoundScore = 0;
+    public NetworkVariable<int> _hostRoundScore = new NetworkVariable<int>(0);
+    public NetworkVariable<int> _clientRoundScore = new NetworkVariable<int>(0);
 
     private readonly CompositeDisposable _disposables = new CompositeDisposable();
 
@@ -40,6 +43,11 @@ public class GameScoreManager : NetworkBehaviour
         _capturePoint.OnPointUncaptured
             .Subscribe(HandlePointUncaptured)
             .AddTo(_disposables);
+
+        _hostRoundScore.OnValueChanged += OnHostRoundScoreChanged;
+        _clientRoundScore.OnValueChanged += OnClientRoundScoreChanged;
+
+        NetworkManager.Singleton.OnClientConnectedCallback += OnPlayerConnected;
 
         /*_capturePoint.OnPointCaptured += HandlePointCaptured;
         _capturePoint.OnPointUncaptured += HandlePointUncaptured;*/
@@ -179,13 +187,15 @@ public class GameScoreManager : NetworkBehaviour
 
         while (_hostFillScore != _maxScore)
         {
-            _hostFillScore++;
+            _hostFillScore += 20; //
             UIReferencesManager.Instance.HostFillScore.fillAmount = _hostFillScore / _maxScore;
             yield return waitTime;
         }
 
-        _hostRoundScore++;
-        UIReferencesManager.Instance.HostRoundScore.text = _hostRoundScore.ToString();
+        if(IsServer)
+        {
+            _hostRoundScore.Value++;
+        }
 
         StartRoundFinisher();
     }
@@ -196,15 +206,49 @@ public class GameScoreManager : NetworkBehaviour
 
         while (_clientFillScore != _maxScore)
         {
-            _clientFillScore++;
+            _clientFillScore += 20; //
             UIReferencesManager.Instance.ClientFillScore.fillAmount = _clientFillScore / _maxScore;
             yield return waitTime;
         }
 
-        _clientRoundScore++;
-        UIReferencesManager.Instance.ClientRoundScore.text = _clientRoundScore.ToString();
+        if (IsServer)
+        {
+            _clientRoundScore.Value++;
+        }
 
         StartRoundFinisher();
+    }
+
+    [Rpc(SendTo.Server)]
+    private void AddRoundScoreRpc(bool isHost)
+    {
+        Debug.Log("Test add");
+
+        if(isHost)
+        {
+            _hostRoundScore.Value++;
+            UpdateRoundScoreUIRpc(isHost);
+        }
+        else
+        {
+            _clientRoundScore.Value++;
+            UpdateRoundScoreUIRpc(isHost);
+        }
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void UpdateRoundScoreUIRpc(bool isHost)
+    {
+        if (isHost)
+        {
+            Debug.Log("Update host score");
+            UIReferencesManager.Instance.HostRoundScore.text = _hostRoundScore.Value.ToString();
+        }
+        else
+        {
+            Debug.Log("Update client score");
+            UIReferencesManager.Instance.ClientRoundScore.text = _clientRoundScore.Value.ToString();
+        }
     }
 
     private void StartRoundFinisher()
@@ -252,6 +296,25 @@ public class GameScoreManager : NetworkBehaviour
 
     }
 
+    private void OnHostRoundScoreChanged(int previousValue, int newValue)
+    {
+        UIReferencesManager.Instance.HostRoundScore.text = newValue.ToString();
+    }
+
+    private void OnClientRoundScoreChanged(int previousValue, int newValue)
+    {
+        UIReferencesManager.Instance.ClientRoundScore.text = newValue.ToString();
+    }
+
+    private void OnPlayerConnected(ulong obj)
+    {
+        if (_hostRoundScore.Value != 0 || _clientRoundScore.Value != 0)
+        {
+            UIReferencesManager.Instance.HostRoundScore.text = _hostRoundScore.Value.ToString();
+            UIReferencesManager.Instance.ClientRoundScore.text = _clientRoundScore.Value.ToString();
+        }
+    }
+
     public override void OnDestroy()
     {
         //_playerSpawner.OnPlayerHealthControllerChanged -= HandleHealthControllerChanged;
@@ -261,6 +324,9 @@ public class GameScoreManager : NetworkBehaviour
             _hostHealthController.OnDeth -= HandlePlayerDeath;
             _clientHealthController.OnDeth -= HandlePlayerDeath;
         }*/
+
+        _hostRoundScore.OnValueChanged -= OnHostRoundScoreChanged;
+        _clientRoundScore.OnValueChanged -= OnClientRoundScoreChanged;
 
         _disposables.Dispose();
     }

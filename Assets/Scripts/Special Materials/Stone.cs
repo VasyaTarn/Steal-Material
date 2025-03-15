@@ -2,9 +2,10 @@ using DG.Tweening;
 using System;
 using System.Collections;
 using Unity.Netcode;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.VFX;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 public class Stone : MaterialSkills, ISkinMaterialChanger
 {
@@ -48,18 +49,67 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
     {
         materialType = Type.Stone;
 
-        _bulletPrefab = projectilePrefabs[projectilePrefabKey];
-        _wall = Resources.Load<GameObject>("Stone/Wall");
+        //_bulletPrefab = projectilePrefabs[projectilePrefabKey];
+
+        Addressables.LoadAssetAsync<GameObject>("Wall").Completed += handle =>
+        {
+            if (handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                _wall = handle.Result;
+            }
+            else
+            {
+                Debug.LogError("Failed to load Wall");
+            }
+        };
+
+        Addressables.LoadAssetAsync<GameObject>("Smoke").Completed += handle =>
+        {
+            if (handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                _smoke = handle.Result;
+            }
+            else
+            {
+                Debug.LogError("Failed to load Smoke");
+            }
+        };
+
+        Addressables.LoadAssetAsync<GameObject>("Stoneburst").Completed += handle =>
+        {
+            if (handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                _stoneburst = handle.Result;
+            }
+            else
+            {
+                Debug.LogError("Failed to load Stoneburst");
+            }
+        };
+
+        Addressables.LoadAssetAsync<GameObject>("Wall_smoke").Completed += handle =>
+        {
+            if (handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                _wallSmoke = handle.Result;
+            }
+            else
+            {
+                Debug.LogError("Failed to load Wall_smoke");
+            }
+        };
+
+        /*_wall = Resources.Load<GameObject>("Stone/Wall");
         _smoke = Resources.Load<GameObject>("Stone/Smoke");
         _stoneburst = Resources.Load<GameObject>("Stone/Stoneburst");
-        _wallSmoke = Resources.Load<GameObject>("Stone/Wall_smoke");
+        _wallSmoke = Resources.Load<GameObject>("Stone/Wall_smoke");*/
     }
 
     #region Melee
 
     public override void MeleeAttack()
     {
-        if (Physics.Raycast(playerObjectReferences.stoneMeleePointPosition.position, Vector3.down, out RaycastHit hit, Mathf.Infinity, LayerMask.GetMask("Ground")))
+        if (Physics.Raycast(playerObjectReferences.StoneMeleePointPosition.position, Vector3.down, out RaycastHit hit, Mathf.Infinity, LayerMask.GetMask("Ground")))
         {
             if (!IsServer)
             {
@@ -146,14 +196,19 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
     {
         if (!IsServer)
         {
-            SpawnProjectileLocal(raycastHit.point, playerObjectReferences.projectileSpawnPoint.position);
+            SpawnProjectileLocal(raycastHit.point, playerObjectReferences.ProjectileSpawnPoint.position);
         }
 
-        SpawnProjectileServerRpc(raycastHit.point, playerObjectReferences.projectileSpawnPoint.position, ownerId);
+        SpawnProjectileServerRpc(raycastHit.point, playerObjectReferences.ProjectileSpawnPoint.position, ownerId);
     }
 
     private void SpawnProjectileLocal(Vector3 raycastPoint, Vector3 projectileSpawnPoint)
     {
+        if (_bulletPrefab == null)
+        {
+            _bulletPrefab = projectilePrefabs[projectilePrefabKey];
+        }
+
         Vector3 aimDir = (raycastPoint - projectileSpawnPoint).normalized;
 
         if (_projectilePool == null)
@@ -182,6 +237,11 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
     [Rpc(SendTo.Server)]
     private void SpawnProjectileServerRpc(Vector3 raycastPoint, Vector3 projectileSpawnPoint, ulong ownerId)
     {
+        if (_bulletPrefab == null)
+        {
+            _bulletPrefab = projectilePrefabs[projectilePrefabKey];
+        }
+
         Vector3 aimDir = (raycastPoint - projectileSpawnPoint).normalized;
 
         NetworkObject projectile = NetworkObjectPool.Singleton.GetNetworkObject(_bulletPrefab, projectileSpawnPoint);
@@ -261,14 +321,14 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
 
     public override void Defense()
     {
-        if (Physics.Raycast(playerObjectReferences.stoneDefensePointPosition.position, Vector3.down, out RaycastHit hit, Mathf.Infinity, LayerMask.GetMask("Ground")))
+        if (Physics.Raycast(playerObjectReferences.StoneDefensePointPosition.position, Vector3.down, out RaycastHit hit, Mathf.Infinity, LayerMask.GetMask("Ground")))
         {
             if (!IsServer)
             {
                 SpawnWallLocal(hit.point);
             }
 
-            SpawnWallServerRpc(hit.point, ownerId);
+            SpawnWallServerRpc(hit.point, ownerId, player.GetComponent<NetworkObject>());
         }
     }
 
@@ -313,7 +373,7 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
     }
 
     [Rpc(SendTo.Server)]
-    private void SpawnWallServerRpc(Vector3 wallSpawnPoint, ulong ownerId)
+    private void SpawnWallServerRpc(Vector3 wallSpawnPoint, ulong ownerId, NetworkObjectReference playerObjectReference)
     {
         NetworkObject wallNetwork = NetworkObjectPool.Singleton.GetNetworkObject(_wall, wallSpawnPoint);
 
@@ -330,46 +390,53 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
 
         Vector3 directionToPlayer;
 
-        if (ownerId == 0)
+        if (playerObjectReference.TryGet(out NetworkObject playerObject))
         {
+            directionToPlayer = playerObject.transform.position - wallSpawnPoint;
+
+            directionToPlayer.y = 0;
+
+            if (directionToPlayer.sqrMagnitude > 0.001f)
+            {
+                wallNetwork.transform.rotation = Quaternion.LookRotation(directionToPlayer);
+                smoke.transform.rotation = Quaternion.LookRotation(directionToPlayer);
+            }
+
+            wallNetwork.transform.position -= new Vector3(0, wallNetwork.transform.localScale.y, 0);
+
+            float pos = (wallNetwork.transform.position + new Vector3(0, wallNetwork.transform.localScale.y, 0)).y;
+
+
+            wallNetwork.transform.DOMoveY(pos, 1f).SetEase(Ease.InOutQuint);
+
+            StartCoroutine(ReleaseStaticObject(5f, () =>
+            {
+                if (IsServer)
+                {
+                    if (wallNetwork.IsSpawned)
+                    {
+                        wallNetwork.Despawn();
+                        smoke.Despawn();
+                    }
+                }
+            }, () =>
+            {
+                float pos = (wallNetwork.transform.position - new Vector3(0, wallNetwork.transform.localScale.y, 0)).y;
+
+                wallNetwork.transform.DOMoveY(pos, 1f).SetEase(Ease.InOutQuint);
+            }));
+        }
+
+        /*if (ownerId == 0)
+        {
+            Debug.Log("Server");
             directionToPlayer = playerSkillsController.transform.position - wallSpawnPoint;
         }
         else
         {
+            Debug.Log("Client");
             directionToPlayer = playerSkillsController.enemy.transform.position - wallSpawnPoint;
-        }
-
-        directionToPlayer.y = 0;
-
-        if (directionToPlayer.sqrMagnitude > 0.001f)
-        {
-            wallNetwork.transform.rotation = Quaternion.LookRotation(directionToPlayer);
-            smoke.transform.rotation = Quaternion.LookRotation(directionToPlayer);
-        }
-
-        wallNetwork.transform.position -= new Vector3(0, wallNetwork.transform.localScale.y, 0);
-
-        float pos = (wallNetwork.transform.position + new Vector3(0, wallNetwork.transform.localScale.y, 0)).y;
-
-
-        wallNetwork.transform.DOMoveY(pos, 1f).SetEase(Ease.InOutQuint);
-
-        StartCoroutine(ReleaseStaticObject(5f, () => 
-        {
-            if (IsServer)
-            {
-                if (wallNetwork.IsSpawned)
-                {
-                    wallNetwork.Despawn();
-                    smoke.Despawn();
-                }
-            }
-        }, () =>
-        {
-            float pos = (wallNetwork.transform.position - new Vector3(0, wallNetwork.transform.localScale.y, 0)).y;
-
-            wallNetwork.transform.DOMoveY(pos, 1f).SetEase(Ease.InOutQuint);
-        }));
+        }*/
     }
 
     #endregion
@@ -378,7 +445,7 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
 
     public override void Special()
     {
-        foreach(Transform smokePosition in playerObjectReferences.stoneSpecialSmokePositions)
+        foreach(Transform smokePosition in playerObjectReferences.StoneSpecialSmokePositions)
         {
             if (Physics.Raycast(smokePosition.position, Vector3.down, out RaycastHit hit, Mathf.Infinity, LayerMask.GetMask("Ground")))
             {

@@ -1,8 +1,9 @@
 using Cysharp.Threading.Tasks;
 using System;
-using System.Collections;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 public class FireProjectile : BulletProjectile
 {
@@ -14,7 +15,20 @@ public class FireProjectile : BulletProjectile
     protected override void Start()
     {
         base.Start();
-        _explosion = Resources.Load<GameObject>("Fire/Explosion");
+
+        Addressables.LoadAssetAsync<GameObject>("Explosion").Completed += handle =>
+        {
+            if (handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                _explosion = handle.Result;
+            }
+            else
+            {
+                Debug.LogError("Failed to load Explosion");
+            }
+        };
+
+        //_explosion = Resources.Load<GameObject>("Fire/Explosion");
     }
 
     private void OnTriggerEnter(Collider other)

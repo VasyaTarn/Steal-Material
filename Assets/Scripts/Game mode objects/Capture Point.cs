@@ -5,6 +5,8 @@ using System.Linq;
 using UniRx;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
 
 enum PointWaveType : byte
 {
@@ -24,9 +26,9 @@ public class CapturePoint : NetworkBehaviour
     private Coroutine _decreaseCorotine;
 
     private GameObject _pointWaveBlue;
-    private GameObject _pointWaveRed;
+    private GameObject _pointWaveRed; 
 
-    private bool _isLockUp = true;
+    private bool _isLockUp = false;
 
     private readonly Subject<ulong> _onPointCapturedSubject = new Subject<ulong>();
     public IObservable<ulong> OnPointCaptured => _onPointCapturedSubject;
@@ -48,12 +50,38 @@ public class CapturePoint : NetworkBehaviour
             _captureProgressBar.ProgressBarImage.color = Color.blue;
         }
 
-        _pointWaveBlue = Resources.Load<GameObject>("General/Point_Wave_Blue");
-        _pointWaveRed = Resources.Load<GameObject>("General/Point_Wave_Red");
+        Addressables.LoadAssetAsync<GameObject>("Point_Wave_Blue").Completed += handle =>
+        {
+            if (handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                _pointWaveBlue = handle.Result;
+            }
+            else
+            {
+                Debug.LogError("Failed to load Point_Wave_Blue");
+            }
+        };
+
+        Addressables.LoadAssetAsync<GameObject>("Point_Wave_Red").Completed += handle =>
+        {
+            if (handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                _pointWaveRed = handle.Result;
+            }
+            else
+            {
+                Debug.LogError("Failed to load Point_Wave_Red");
+            }
+        };
+
+        /*_pointWaveBlue = Resources.Load<GameObject>("General/Point_Wave_Blue");
+        _pointWaveRed = Resources.Load<GameObject>("General/Point_Wave_Red");*/
 
         _units.count.OnValueChanged += HandleCountChanged;
 
         _units.ownerId.OnValueChanged += HandleOwnerChanged;
+
+        NetworkManager.Singleton.OnClientDisconnectCallback += OnPlayerDisconnected;
 
         //NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
     }
@@ -188,7 +216,7 @@ public class CapturePoint : NetworkBehaviour
     {
         if (_units.count.Value < _maxScore)
         {
-            _units.count.Value++;
+            _units.count.Value += 20; //
 
             _captureProgressBar.ProgressBarImage.fillAmount = _units.count.Value / _maxScore;
         }
@@ -244,7 +272,7 @@ public class CapturePoint : NetworkBehaviour
     {
         if (_units.count.Value > 0)
         {
-            _units.count.Value--;
+            _units.count.Value -= 20; //
             _captureProgressBar.ProgressBarImage.fillAmount = _units.count.Value / _maxScore;
         }
     }
@@ -299,14 +327,17 @@ public class CapturePoint : NetworkBehaviour
         releaseAction?.Invoke();
     }
 
-    /*private void OnClientConnected(ulong clientId)
+    private void OnPlayerDisconnected(ulong obj)
     {
-        if (clientId == 0)
+        if (IsServer)
         {
-            LockUpPointClientRpc(true);
+            _captureProgressBar.LockImage.SetActive(true);
+
             _isLockUp = true;
+
+            Debug.Log("Test disconnect");
         }
-    }*/
+    }
 
     public override void OnDestroy()
     {
