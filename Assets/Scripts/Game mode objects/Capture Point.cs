@@ -28,7 +28,7 @@ public class CapturePoint : NetworkBehaviour
     private GameObject _pointWaveBlue;
     private GameObject _pointWaveRed; 
 
-    private bool _isLockUp = false;
+    private bool _isLockUp = true;
 
     private readonly Subject<ulong> _onPointCapturedSubject = new Subject<ulong>();
     public IObservable<ulong> OnPointCaptured => _onPointCapturedSubject;
@@ -81,6 +81,7 @@ public class CapturePoint : NetworkBehaviour
 
         _units.ownerId.OnValueChanged += HandleOwnerChanged;
 
+        NetworkManager.Singleton.OnClientConnectedCallback += OnPlayerConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback += OnPlayerDisconnected;
 
         //NetworkManager.Singleton.OnClientConnectedCallback += OnClientConnected;
@@ -327,6 +328,31 @@ public class CapturePoint : NetworkBehaviour
         releaseAction?.Invoke();
     }
 
+    private void OnPlayerConnected(ulong obj)
+    {
+        if (IsClient && !IsServer)
+        {
+            if (_units.count.Value > 0)
+            {
+                _captureProgressBar.ProgressBarImage.fillAmount = _units.count.Value / _maxScore;
+            }
+        }
+
+        if(IsServer)
+        {
+            UpdateCaptureLockUIRpc();
+            _isLockUp = false;
+        }
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void UpdateCaptureLockUIRpc()
+    {
+        _captureProgressBar.LockImage.SetActive(false);
+        _captureProgressBar.ProgressBarImage.color = (_units.ownerId.Value == 0) ? Color.blue : Color.red;
+
+    }
+
     private void OnPlayerDisconnected(ulong obj)
     {
         if (IsServer)
@@ -335,7 +361,7 @@ public class CapturePoint : NetworkBehaviour
 
             _isLockUp = true;
 
-            Debug.Log("Test disconnect");
+            Debug.Log("TEST Disconnect");
         }
     }
 
@@ -343,6 +369,9 @@ public class CapturePoint : NetworkBehaviour
     {
         _units.count.OnValueChanged -= HandleCountChanged;
         _units.ownerId.OnValueChanged -= HandleOwnerChanged;
+
+        NetworkManager.Singleton.OnClientConnectedCallback -= OnPlayerConnected;
+        NetworkManager.Singleton.OnClientDisconnectCallback -= OnPlayerDisconnected;
 
         /*if (NetworkManager.Singleton != null)
         {

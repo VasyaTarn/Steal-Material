@@ -50,14 +50,6 @@ public class GameTimer : NetworkBehaviour
 
         UpdateSecondTimerRpc(_secondTicks.Value);
 
-        if (_secondTicks.Value == 10)
-        {
-            if (NetworkManager.Singleton.ConnectedClientsList.Count > 1)
-            {
-                _capturePoint.ActivatePointRpc();
-            }
-        }
-
         if (_secondTicks.Value >= 60)
         {
             _secondTicks.Value = 0;

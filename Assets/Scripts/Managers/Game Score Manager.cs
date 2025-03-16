@@ -187,7 +187,7 @@ public class GameScoreManager : NetworkBehaviour
 
         while (_hostFillScore != _maxScore)
         {
-            _hostFillScore += 20; //
+            _hostFillScore++;
             UIReferencesManager.Instance.HostFillScore.fillAmount = _hostFillScore / _maxScore;
             yield return waitTime;
         }
@@ -206,7 +206,7 @@ public class GameScoreManager : NetworkBehaviour
 
         while (_clientFillScore != _maxScore)
         {
-            _clientFillScore += 20; //
+            _clientFillScore++;
             UIReferencesManager.Instance.ClientFillScore.fillAmount = _clientFillScore / _maxScore;
             yield return waitTime;
         }

@@ -26,6 +26,9 @@ public class BackToMenu : MonoBehaviour
             await Task.Delay(1000);
 
             SceneManager.LoadScene("Menu");
+
+            Cursor.visible = true;
+            Cursor.lockState = CursorLockMode.None;
         }
         catch (Exception ex)
         {
