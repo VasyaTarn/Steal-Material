@@ -40,8 +40,9 @@ public class CapturePoint : NetworkBehaviour
     public event Action<ulong> OnPointUncaptured;*/
 
     [SerializeField] private CaptureProgressBar _captureProgressBar;
-
     public CaptureProgressBar CaptureProgressBar => _captureProgressBar;
+    public Dictionary<ulong, GameObject> Players => _players;
+
 
     private void Start()
     {
@@ -101,28 +102,31 @@ public class CapturePoint : NetworkBehaviour
     {
         if (!IsServer) return;
 
-        ulong ownerId = other.GetComponent<NetworkObject>().OwnerClientId;
+        if (other.CompareTag("Player"))
+        {
+            ulong ownerId = other.GetComponent<NetworkObject>().OwnerClientId;
 
-        _players.Add(ownerId, other.gameObject);
+            _players.Add(ownerId, other.gameObject);
 
-        if (_units.count.Value == 0)
-        {
-            _units.ownerId.Value = ownerId;
-            _increaseCorotine = StartCoroutine(IncreasePoints());
-        }
-        else if(_units.count.Value > 0 && _units.ownerId.Value != ownerId)
-        {
-            _decreaseCorotine = StartCoroutine(DecreasePoints());
-        }
-        else if (_units.count.Value > 0 && _units.ownerId.Value == ownerId && _units.count.Value < _maxScore)
-        {
-            _increaseCorotine = StartCoroutine(IncreasePoints());
-        }
+            if (_units.count.Value == 0)
+            {
+                _units.ownerId.Value = ownerId;
+                _increaseCorotine = StartCoroutine(IncreasePoints());
+            }
+            else if (_units.count.Value > 0 && _units.ownerId.Value != ownerId)
+            {
+                _decreaseCorotine = StartCoroutine(DecreasePoints());
+            }
+            else if (_units.count.Value > 0 && _units.ownerId.Value == ownerId && _units.count.Value < _maxScore)
+            {
+                _increaseCorotine = StartCoroutine(IncreasePoints());
+            }
 
-        if (_players.Count == 2)
-        {
-            StopCoroutine(_increaseCorotine);
-            StopCoroutine(_decreaseCorotine);
+            if (_players.Count == 2)
+            {
+                StopCoroutine(_increaseCorotine);
+                StopCoroutine(_decreaseCorotine);
+            }
         }
     }
 
@@ -130,29 +134,32 @@ public class CapturePoint : NetworkBehaviour
     {
         if (!IsServer) return;
 
-        ulong ownerId = other.GetComponent<NetworkObject>().OwnerClientId;
-
-        _players.Remove(ownerId);
-
-        if(_increaseCorotine != null && _players.Count == 0)
+        if (other.CompareTag("Player"))
         {
-            StopCoroutine(_increaseCorotine);
+            ulong ownerId = other.GetComponent<NetworkObject>().OwnerClientId;
 
-            if (_decreaseCorotine != null)
-            {
-                StopCoroutine(_decreaseCorotine);
-            }
-        }
+            _players.Remove(ownerId);
 
-        if(_players.Count == 1)
-        {
-            if(ownerId != _units.ownerId.Value)
+            if (_increaseCorotine != null && _players.Count == 0)
             {
-                _increaseCorotine = StartCoroutine(IncreasePoints());
+                StopCoroutine(_increaseCorotine);
+
+                if (_decreaseCorotine != null)
+                {
+                    StopCoroutine(_decreaseCorotine);
+                }
             }
-            else
+
+            if (_players.Count == 1)
             {
-                _decreaseCorotine = StartCoroutine(DecreasePoints());
+                if (ownerId != _units.ownerId.Value)
+                {
+                    _increaseCorotine = StartCoroutine(IncreasePoints());
+                }
+                else
+                {
+                    _decreaseCorotine = StartCoroutine(DecreasePoints());
+                }
             }
         }
     }
@@ -217,28 +224,11 @@ public class CapturePoint : NetworkBehaviour
     {
         if (_units.count.Value < _maxScore)
         {
-            _units.count.Value += 20; //
+            _units.count.Value++;
 
             _captureProgressBar.ProgressBarImage.fillAmount = _units.count.Value / _maxScore;
         }
     }
-
-    /*private IEnumerator LockUpPoint(float duration)
-    {
-        LockUpPointClientRpc(true);
-        _isLockUp = true;
-
-        yield return new WaitForSeconds(duration);
-
-        LockUpPointClientRpc(false);
-        _isLockUp = false;
-    }
-
-    [Rpc(SendTo.ClientsAndHost)]
-    private void LockUpPointClientRpc(bool isLocked)
-    {
-        _captureProgressBar.LockImage.SetActive(isLocked);
-    }*/
 
     [Rpc(SendTo.ClientsAndHost)]
     public void ActivatePointRpc()
@@ -273,7 +263,7 @@ public class CapturePoint : NetworkBehaviour
     {
         if (_units.count.Value > 0)
         {
-            _units.count.Value -= 20; //
+            _units.count.Value--;
             _captureProgressBar.ProgressBarImage.fillAmount = _units.count.Value / _maxScore;
         }
     }
@@ -336,6 +326,18 @@ public class CapturePoint : NetworkBehaviour
             {
                 _captureProgressBar.ProgressBarImage.fillAmount = _units.count.Value / _maxScore;
             }
+
+            if(_units.count.Value == _maxScore)
+            {
+                if (_units.ownerId.Value == 0)
+                {
+                    UIReferencesManager.Instance.TopCapturePointStatus.color = Color.blue;
+                }
+                else
+                {
+                    UIReferencesManager.Instance.TopCapturePointStatus.color = Color.red;
+                }
+            }
         }
 
         if(IsServer)
@@ -360,8 +362,6 @@ public class CapturePoint : NetworkBehaviour
             _captureProgressBar.LockImage.SetActive(true);
 
             _isLockUp = true;
-
-            Debug.Log("TEST Disconnect");
         }
     }
 
@@ -370,12 +370,10 @@ public class CapturePoint : NetworkBehaviour
         _units.count.OnValueChanged -= HandleCountChanged;
         _units.ownerId.OnValueChanged -= HandleOwnerChanged;
 
-        NetworkManager.Singleton.OnClientConnectedCallback -= OnPlayerConnected;
-        NetworkManager.Singleton.OnClientDisconnectCallback -= OnPlayerDisconnected;
-
-        /*if (NetworkManager.Singleton != null)
+        if (NetworkManager.Singleton != null)
         {
-            NetworkManager.Singleton.OnClientConnectedCallback -= OnClientConnected;
-        }*/
+            NetworkManager.Singleton.OnClientConnectedCallback -= OnPlayerConnected;
+            NetworkManager.Singleton.OnClientDisconnectCallback -= OnPlayerDisconnected;
+        }
     }
 }

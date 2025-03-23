@@ -27,7 +27,7 @@ public class SkinContoller : NetworkBehaviour
 
     private AbilityDescriptor _abilityDescriptor;
 
-    public bool disablingPlayerSkills { get; private set; }
+    public bool disablingPlayerSkills { get; set; }
     public SkinView skinView { get; private set; }
 
     private void Awake()
@@ -73,14 +73,17 @@ public class SkinContoller : NetworkBehaviour
             {
                 if (_input.steal && skinMaterial != hit.collider.gameObject)
                 {
-                    if (Time.time >= _lastStealTime + _stealCooldown)
+                    if (!disablingPlayerSkills)
                     {
-                        ChangeSkin(hit.collider.gameObject);
-                        skills.ownerId = OwnerClientId;
-                        _playerHealthController.OnDamageTaken = null;
+                        if (Time.time >= _lastStealTime + _stealCooldown)
+                        {
+                            ChangeSkin(hit.collider.gameObject);
+                            skills.ownerId = OwnerClientId;
+                            _playerHealthController.OnDamageTaken = null;
 
-                        UIReferencesManager.Instance.Steal.ActivateCooldown(_stealCooldown);
-                        _lastStealTime = Time.time;
+                            UIReferencesManager.Instance.Steal.ActivateCooldown(_stealCooldown);
+                            _lastStealTime = Time.time;
+                        }
                     }
 
                 }
@@ -193,12 +196,14 @@ public class SkinContoller : NetworkBehaviour
     {
         _playerMovementController.disablingPlayerMove = true;
         _playerMovementController.disablingPlayerJumpAndGravity = true;
+        _playerMovementController.disablingPlayerVerticalMove = true;
         disablingPlayerSkills = true;
 
         yield return new WaitForSeconds(delay);
 
         _playerMovementController.disablingPlayerMove = false;
         _playerMovementController.disablingPlayerJumpAndGravity = false;
+        _playerMovementController.disablingPlayerVerticalMove = false;
         disablingPlayerSkills = false;
     }
 

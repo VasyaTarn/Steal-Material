@@ -65,9 +65,12 @@ public class PlayerMovementController : NetworkBehaviour
     private const float _threshold = 0.01f;
 
     private PlayerInput _playerInput;
+    private PlayerAnimationController _playerAnimationController;
+
     [HideInInspector] public CharacterController controller;
     [HideInInspector] public Inputs inputs;
     [HideInInspector] public Camera mainCamera;
+
     private GameObject _startCamera;
     private SkinContoller _skinContoller;
     private BoxCollider _boxCollider;
@@ -75,9 +78,8 @@ public class PlayerMovementController : NetworkBehaviour
     [HideInInspector] public StatusEffectsController<MovementStatsNetwork, MovementStatsLocal> statusEffectsController;
 
     [HideInInspector] public bool disablingPlayerMove = true;
+    [HideInInspector] public bool disablingPlayerVerticalMove = true;
     [HideInInspector] public bool disablingPlayerJumpAndGravity = true;
-
-    //Test
 
     private Vector3 _smoothedCameraForward;
     private Vector3 _smoothedCameraRight;
@@ -129,6 +131,7 @@ public class PlayerMovementController : NetworkBehaviour
         controller = GetComponent<CharacterController>();
         inputs = GetComponent<Inputs>();
         _skinContoller = GetComponent<SkinContoller>();
+        _playerAnimationController = GetComponent<PlayerAnimationController>();
 
         currentMoveSpeed = baseMovementStats.moveSpeed;
 
@@ -157,11 +160,6 @@ public class PlayerMovementController : NetworkBehaviour
         {
             JumpAndGravity();
         }
-
-        /*if (!disablingPlayerMove && !currentMovementStats.isStuned.Value)
-        {
-            ApplyMovement();
-        }*/
     }
 
     private void Update()
@@ -169,24 +167,31 @@ public class PlayerMovementController : NetworkBehaviour
         if (!IsOwner)
             return;
 
-        if (!disablingPlayerMove && !currentMovementStats.isStuned.Value)
+        _playerAnimationController.SetStunStatus(currentMovementStats.isStuned.Value);
+
+        if (disablingPlayerMove || currentMovementStats.isStuned.Value)
+        {
+            characterVelocity = Vector3.zero;
+
+            if (!disablingPlayerVerticalMove)
+            {
+                MoveVertical();
+            }
+        }
+        else
         {
             Move();
-
-            //CalculateMovementDirection();
+            MoveVertical();
         }
 
-        //Debug.Log(currentMovementStats.moveSpeed.Value);
+        controller.Move(characterVelocity);
 
-        /*if (inputs.jump && !currentMovementStats.isStuned.Value)
+        GroundedCheck();
+
+        if (!disablingPlayerJumpAndGravity)
         {
-            if (_skinContoller.skinView.CurrentArmatureNetwork.Value.TryGet(out NetworkObject armatureNetworkObject))
-            {
-                armatureNetworkObject.GetComponent<PlayerArmature>().animator.SetTrigger("Jump");
-            }
-        }   */ 
-
-        GroundedCheck(); 
+            Jump();
+        }
     }
 
     private void LateUpdate()
@@ -227,8 +232,8 @@ public class PlayerMovementController : NetworkBehaviour
         if (inputs.look.sqrMagnitude >= _threshold)
         {
             float deltaTimeMultiplier = IsCurrentDeviceMouse ? 1.0f : Time.deltaTime;
-            _cinemachineTargetYaw += inputs.look.x * deltaTimeMultiplier * currentMovementStats.mouseSensitivity.Value;
-            _cinemachineTargetPitch += inputs.look.y * deltaTimeMultiplier * currentMovementStats.mouseSensitivity.Value;
+            _cinemachineTargetYaw += inputs.look.x * deltaTimeMultiplier * baseMovementStats.mouseSensitivity;
+            _cinemachineTargetPitch += inputs.look.y * deltaTimeMultiplier * baseMovementStats.mouseSensitivity;
         }
 
         _cinemachineTargetYaw = ClampAngle(_cinemachineTargetYaw, float.MinValue, float.MaxValue);
@@ -288,15 +293,19 @@ public class PlayerMovementController : NetworkBehaviour
 
         float targetYaw = Mathf.Atan2(_smoothedCameraForward.x, _smoothedCameraForward.z) * Mathf.Rad2Deg;
         float rotation = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetYaw, ref _rotationVelocity, rotationSmoothTime);
+
         transform.rotation = Quaternion.Euler(0.0f, rotation, 0.0f);
 
         _targetDirection = (_smoothedCameraRight * inputDirection.x + _smoothedCameraForward * inputDirection.z).normalized;
 
         characterVelocity = _targetDirection * speedDelta;
 
-        //Debug.Log($"characterVelocity: {characterVelocity}, deltaTime: {Time.deltaTime}");
+        //controller.Move(characterVelocity);
+    }
 
-        controller.Move(characterVelocity + new Vector3(0f, verticalVelocity * Time.deltaTime, 0f));
+    private void MoveVertical()
+    {
+        characterVelocity += new Vector3(0f, verticalVelocity * Time.deltaTime, 0f);
     }
 
     private void JumpAndGravity()
@@ -310,9 +319,47 @@ public class PlayerMovementController : NetworkBehaviour
                 verticalVelocity = -2f;
             }
 
-            if (inputs.jump && !currentMovementStats.isStuned.Value)
+            /*if (!disablingPlayerMove && !currentMovementStats.isStuned.Value)
             {
-                verticalVelocity = Mathf.Sqrt(currentMovementStats.jumpHeight.Value * -2f * gravity);
+                if (inputs.jump && !currentMovementStats.isStuned.Value)
+                {
+                    verticalVelocity = Mathf.Sqrt(currentMovementStats.jumpHeight.Value * -2f * gravity);
+                }
+            }*/
+        }
+        else
+        {
+            /*if (!disablingPlayerMove)
+            {
+                if (inputs.jump != false)
+                {
+                    inputs.jump = false;
+
+                    if (!IsServer)
+                    {
+                        DisableJumpRpc();
+                    }
+                }
+            }*/
+
+            if (verticalVelocity < _terminalVelocity)
+            {
+                verticalVelocity += gravity * Time.deltaTime;
+            }
+        }
+    }
+
+    private void Jump()
+    {
+        if (grounded)
+        {
+            if (!disablingPlayerMove && !currentMovementStats.isStuned.Value)
+            {
+                if (inputs.jump && !currentMovementStats.isStuned.Value)
+                {
+                    //verticalVelocity = Mathf.Sqrt(currentMovementStats.jumpHeight.Value * -2f * gravity);
+                    ExecuteJump(currentMovementStats.jumpHeight.Value);
+                }
             }
         }
         else
@@ -329,12 +376,12 @@ public class PlayerMovementController : NetworkBehaviour
                     }
                 }
             }
-
-            if (verticalVelocity < _terminalVelocity)
-            {
-                verticalVelocity += gravity * Time.deltaTime;
-            }
         }
+    }
+
+    public void ExecuteJump(float height)
+    {
+        verticalVelocity = Mathf.Sqrt(height * -2f * gravity);
     }
 
     [Rpc(SendTo.Server)] 
@@ -356,6 +403,10 @@ public class PlayerMovementController : NetworkBehaviour
 
     }
 
+    public void SetSensitivity(float value)
+    {
+        baseMovementStats.mouseSensitivity = value;
+    }    
     /*public override void OnNetworkDespawn()
     {
         startCamera.SetActive(true);

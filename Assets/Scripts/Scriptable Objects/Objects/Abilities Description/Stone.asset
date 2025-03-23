@@ -18,47 +18,48 @@ MonoBehaviour:
 
 
     <b>Damage:
-    n
+    20
 
-    Stun damage multiplier: xn
+    Stun damage multiplier: x2
 
-    Fire rate: n
+    Fire rate: 60 rpm
 
-    Projectile speed: n'
+    Projectile speed:
+    30'
   _passiveDescription: "<size=22><b>Stone armor reduces incoming damage to the character,
-    but reduces his movement speed.</b></size> \n\nIncoming damage reduction: n%\nSpeed
-    \u200B\u200Breduction: n%"
+    but reduces his movement speed.</b></size> \n\nIncoming damage reduction: 50%\nSpeed
+    \u200B\u200Breduction: 33%"
   _meleeDescription: '<size=22><b>A massive boulder rises from the ground, dealing
     damage and stunning in front of the character (Applies the "Stun" effect for
     synergy with the "Range" ability).</b></size>
 
 
-    Damage: n
+    Damage: 10
 
-    Cooldown:
-    ns
+    Stun duration:
+    3 s
 
-    Stun duration: ns'
+    Cooldown: 6s'
   _movementDescription: '<size=22><b>Continuous sliding on the ground.</b></size>
 
 
-    Sliding
-    duration: ns
+    Duration:
+    2 s
 
-    Cooldown: ns'
+    Cooldown: 4 s'
   _defenseDescription: '<size=22><b>A stone wall rises in front of the character.
     It cannot be destroyed, and disappears after a while.</b></size>
 
 
     Wall duration:
-    ns
+    5 s
 
-    Cooldown: ns'
+    Cooldown: 10 s'
   _specialDescription: '<size=22><b>Creates dust storms in 4 directions from the
     character, blocking visibility.</b></size>
 
 
-    Dust storm duration: ns
+    Dust storm duration: 5 s
 
     Cooldown:
-    ns'
+    10 s'

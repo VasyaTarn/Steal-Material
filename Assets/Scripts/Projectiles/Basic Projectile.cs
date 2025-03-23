@@ -1,7 +1,5 @@
 using System;
-using Unity.Netcode;
 using UnityEngine;
-using static UnityEngine.EventSystems.EventTrigger;
 
 public class BasicProjectile : BulletProjectile
 {
@@ -30,7 +28,6 @@ public class BasicProjectile : BulletProjectile
             {
                 if (isNetworkObject)
                 {
-
                     healthController.TakeDamage(damage);
                 }
                 else
@@ -40,8 +37,9 @@ public class BasicProjectile : BulletProjectile
             }
         }
 
-        
-
-        onReleaseCallback?.Invoke();
+        if (!target.CompareTag("CapturePoint"))
+        {
+            onReleaseCallback?.Invoke();
+        }
     }
 }

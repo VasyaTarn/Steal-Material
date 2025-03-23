@@ -1,0 +1,27 @@
+fileFormatVersion: 2
+guid: e2e80a6203cc91843b1ed340fd568fb2
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: L_Rock_01.001
+    second: {fileID: 2100000, guid: a1422a9923e8e154bade5dd946c5fa16, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: M_Rock_01.001
+    second: {fileID: 2100000, guid: f87acb28fc93c2448895d1d13db44071, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: S_Rock_01.002
+    second: {fileID: 2100000, guid: f20bf36f9f412c54caf0a43399ddd498, type: 2}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 11500000, guid: aecd2106718f2444db3ca21345da2cef, type: 3}
+  reverseAxis: 0
+  renderPipeline: 0

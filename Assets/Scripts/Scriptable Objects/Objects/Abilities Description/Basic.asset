@@ -17,29 +17,29 @@ MonoBehaviour:
 
 
     Damage:
-    n
+    15
 
-    Fire Rate: n
+    Fire Rate: 120 RPM
 
-    Projectile Speed: n'
+    Projectile Speed: 60'
   _passiveDescription: <size=22><b>Displaying enemy material.</b></size>
   _meleeDescription: '<size=22><b>Claw attack in front of you.</b></size>
 
 
     Damage:
-    n
+    20
 
-    Cooldown:  ns'
+    Cooldown:  1 s'
   _movementDescription: "<size=22><b>Activate sprint to increase movement speed.
     Pressing it again disables the ability.</b></size> \n\nSpeed \u200B\u200Bmultiplier:
-    xn"
+    x1.5"
   _defenseDescription: "<size=22><b>Activate the ability to enter a block stance
     to reduce incoming damage. Pressing it again disables the ability.</b></size>\n
-    \nDamage resistance: n%"
+    \nDamage resistance: 20%"
   _specialDescription: '<size=22><b>Steals enemy material if enemy enters the ability
     radius.</b></size>
 
 
-    Radius: n
+    Radius: 10
 
-    Cooldown: ns'
+    Cooldown: 5 s'

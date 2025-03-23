@@ -6,8 +6,9 @@ using UnityEngine;
 using UnityEngine.VFX;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UniRx;
 
-public class Stone : MaterialSkills, ISkinMaterialChanger
+public class Stone : MaterialSkills, ISkinMaterialChanger, IActivateSkinMaterialHandler
 {
     private GameObject _bulletPrefab;
     
@@ -32,15 +33,18 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
     private LocalObjectPool _stoneburstPool;
 
     private bool _canDash = true;
-    private float _dashingPower = 15f;
-    private float _dashingTime = 1.5f;
+    private float _dashingPower = 10f;
+    private float _dashingTime = 2f;
     private Vector3 _dashVelocity;
+    private Coroutine _dashCoroutine;
 
-    public override float meleeAttackCooldown { get; } = 0.5f;
-    public override float rangeAttackCooldown { get; } = 0.5f;
+    private IDisposable _deathSubscription;
+
+    public override float meleeAttackCooldown { get; } = 6f;
+    public override float rangeAttackCooldown { get; } = 1f;
     public override float movementCooldown { get; } = 4f;
-    public override float defenseCooldown { get; } = 8f;
-    public override float specialCooldown { get; } = 5f;
+    public override float defenseCooldown { get; } = 10f;
+    public override float specialCooldown { get; } = 10f;
 
     public override string projectilePrefabKey { get; } = ProjectileMapper.GetProjectileKey(ProjectileType.Stone);
 
@@ -127,10 +131,16 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
 
                 if (playerNetworkObject != null && playerNetworkObject.OwnerClientId != ownerId && movementController != null)
                 {
-                    playerSkillsController.enemyHealthController.TakeDamage(10);
+                    playerSkillsController.enemyHealthController.TakeDamage(10f);
+
                     if (IsServer)
                     {
-                        movementController.statusEffectsController.AddBuff(new Stun(5f));
+                        SetActivationRaycastRpc(playerNetworkObject, false);
+
+                        movementController.statusEffectsController.AddBuff(new Stun(3f), () => 
+                        {
+                            SetActivationRaycastRpc(playerNetworkObject, true);
+                        });
                     }
                     else
                     {
@@ -146,7 +156,21 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
     {
         if (NetworkManager.Singleton.ConnectedClients.TryGetValue(ownerId, out NetworkClient networkClient))
         {
-            networkClient.PlayerObject.gameObject.GetComponent<PlayerMovementController>().statusEffectsController.AddBuff(new Stun(5f));
+            SetActivationRaycastRpc(networkClient.PlayerObject, false);
+
+            networkClient.PlayerObject.gameObject.GetComponent<PlayerMovementController>().statusEffectsController.AddBuff(new Stun(5f), () => 
+            {
+                SetActivationRaycastRpc(networkClient.PlayerObject, true);
+            });
+        }
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void SetActivationRaycastRpc(NetworkObjectReference player, bool status)
+    {
+        if(player.TryGet(out NetworkObject playerObject))
+        {
+            playerObject.GetComponent<RaycastPerformer>().isActiveRaycast = status;
         }
     }
 
@@ -290,19 +314,37 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
 
     public override void Movement() 
     {
-        if(_canDash && playerMovementController.grounded)
+        if(_canDash)
         {
-            StartCoroutine(Dash());
+            if (playerMovementController.grounded)
+            {
+                _dashCoroutine = StartCoroutine(Dash());
+            }
         }
     }
 
-    IEnumerator Dash()
+    private IEnumerator Dash()
     {
-        //Anim
         yield return new WaitForSeconds(0.2f);
+
         _canDash = false;
+        playerAnimationController.SetRollStatus(!_canDash);
+
         playerMovementController.disablingPlayerMove = true;
+        //playerAnimationController.DisablingPlayerAnimator = true;
+        Player.GetComponent<RaycastPerformer>().isActiveRaycast = false;
+        playerSkillsController.SetDisablePlayerSkillsStatus(true);
         _dashVelocity = playerMovementController.transform.forward * _dashingPower;
+
+        //playerObjectReferences.StoneMovementObject.SetActive(true);
+
+        /*if (IsClient && !IsServer)
+        {
+            playerObjectReferences.StoneMovementObject.SetActive(true);
+        }*/
+
+        ChangeActiveStatusMovementModelRpc(Player.GetComponent<NetworkObject>(), true);
+
         float startTime = Time.time;
 
         while (Time.time < startTime + _dashingTime)
@@ -311,8 +353,32 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
             yield return null;
         }
 
+        //playerObjectReferences.StoneMovementObject.SetActive(false);
+
+        /*if (IsClient && !IsServer)
+        {
+            playerObjectReferences.StoneMovementObject.SetActive(false);
+        }*/
+
+        ChangeActiveStatusMovementModelRpc(Player.GetComponent<NetworkObject>(), false);
+
         playerMovementController.disablingPlayerMove = false;
+        //playerAnimationController.DisablingPlayerAnimator = false;
+        Player.GetComponent<RaycastPerformer>().isActiveRaycast = true;
+        playerSkillsController.disablingPlayerShootingDuringMovementSkill = false;
+        playerSkillsController.SetDisablePlayerSkillsStatus(false);
+
         _canDash = true;
+        playerAnimationController.SetRollStatus(!_canDash);
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void ChangeActiveStatusMovementModelRpc(NetworkObjectReference player, bool status)
+    {
+        if (player.TryGet(out NetworkObject playerNetworkObject))
+        {
+            playerNetworkObject.GetComponent<PlayerObjectReferences>().StoneMovementObject.SetActive(status);
+        }
     }
 
     #endregion
@@ -328,7 +394,7 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
                 SpawnWallLocal(hit.point);
             }
 
-            SpawnWallServerRpc(hit.point, ownerId, player.GetComponent<NetworkObject>());
+            SpawnWallServerRpc(hit.point, ownerId, Player.GetComponent<NetworkObject>());
         }
     }
 
@@ -516,11 +582,11 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
     {
         if (IsServer)
         {
-            playerMovementController.currentMovementStats.moveSpeed.Value = playerMovementController.baseMovementStats.moveSpeed / 2;
+            playerMovementController.currentMovementStats.moveSpeed.Value = playerMovementController.baseMovementStats.moveSpeed / 1.5f;
         }
         else
         {
-            playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed / 2;
+            playerMovementController.currentMoveSpeed = playerMovementController.baseMovementStats.moveSpeed / 1.5f;
             EnableDefenseRpc(ownerId);
         }
 
@@ -546,7 +612,7 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
     private void EnableDefenseRpc(ulong ownerId)
     {
         PlayerMovementController player = NetworkManager.Singleton.ConnectedClients[ownerId].PlayerObject.GetComponent<PlayerMovementController>();
-        player.currentMovementStats.moveSpeed.Value = player.baseMovementStats.moveSpeed / 2;
+        player.currentMovementStats.moveSpeed.Value = player.baseMovementStats.moveSpeed / 1.5f;
     }
 
     [Rpc(SendTo.Server)]
@@ -575,6 +641,26 @@ public class Stone : MaterialSkills, ISkinMaterialChanger
     public void ChangeSkinAction()
     {
         DisableDefense();
+    }
+
+    public void ActivateSkinMaterialAction()
+    {
+        if (_deathSubscription == null)
+        {
+            _deathSubscription = playerHealthController.OnDeath
+                .Subscribe(HandlePlayerDeath);
+        }
+    }
+
+    private void HandlePlayerDeath(ulong obj)
+    {
+        if (_dashCoroutine != null)
+        {
+            StopCoroutine(_dashCoroutine);
+
+            _canDash = true;
+            playerAnimationController.SetRollStatus(_canDash);
+        }
     }
 }
 

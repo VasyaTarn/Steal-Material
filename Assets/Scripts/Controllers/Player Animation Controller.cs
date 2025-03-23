@@ -1,6 +1,7 @@
 using System;
 using UniRx;
 using Unity.Netcode;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class PlayerAnimationController : NetworkBehaviour
@@ -13,8 +14,14 @@ public class PlayerAnimationController : NetworkBehaviour
 
     private PlayerMovementController _movementController;
     private PlayerHealthController _healthController;
+    private PlayerSkillsController _skillsController;
 
-    public bool _sprintStatus;
+    private bool _sprintStatus;
+    private bool _blockStatus;
+    private bool _climbStatus;
+    private bool _movementSkillStatus;
+    private bool _rollStatus;
+    private bool _stunStatus;
 
     public SkinView SkinView => _skinView;
     public PlayerArmature CachedComponentNetwork => _cachedComponentNetwork;
@@ -64,6 +71,7 @@ public class PlayerAnimationController : NetworkBehaviour
         _inputs = GetComponent<Inputs>();
         _movementController = GetComponent<PlayerMovementController>();
         _healthController = GetComponent<PlayerHealthController>();
+        _skillsController = GetComponent<PlayerSkillsController>();
 
         //_healthController.OnDeth += HandlePlayerDeath;
 
@@ -92,11 +100,30 @@ public class PlayerAnimationController : NetworkBehaviour
                     }
                 }
 
-                _skinView.CurrentArmatureLocal.animator.SetBool("IsFalling", !_movementController.grounded);
+                if (!_climbStatus && !_movementSkillStatus)
+                {
+                    _skinView.CurrentArmatureLocal.animator.SetBool("IsFalling", !_movementController.grounded);
+                }
 
-                _skinView.CurrentArmatureLocal.animator.SetBool("IsRunning", _sprintStatus);
+                if (_sprintStatus)
+                {
+                    _skinView.CurrentArmatureLocal.animator.SetFloat("SpeedMultiplier", 1.3f);
+                }
+                else if (_blockStatus)
+                {
+                    _skinView.CurrentArmatureLocal.animator.SetFloat("SpeedMultiplier", 0.5f);
+                }
+                else
+                {
+                    _skinView.CurrentArmatureLocal.animator.SetFloat("SpeedMultiplier", 1f);
+                }
 
-                PlayClientAnimationByServerRpc(_skinView.CurrentArmatureNetwork.Value, _inputs.move.x, _inputs.move.y, _inputs.jump, _movementController.grounded);
+                _skinView.CurrentArmatureLocal.animator.SetBool("IsBlock", _blockStatus);
+                _skinView.CurrentArmatureLocal.animator.SetBool("IsClimbing", _climbStatus);
+                _skinView.CurrentArmatureLocal.animator.SetBool("IsRolling", _rollStatus);
+                _skinView.CurrentArmatureLocal.animator.SetBool("IsStunning", _stunStatus);
+
+                PlayClientAnimationByServerRpc(_skinView.CurrentArmatureNetwork.Value, _inputs.move.x, _inputs.move.y, _inputs.jump, _movementController.grounded, _blockStatus, _sprintStatus, _climbStatus, _movementSkillStatus, _rollStatus, _stunStatus);
             }
             else
             {
@@ -106,17 +133,17 @@ public class PlayerAnimationController : NetworkBehaviour
                 _skinView.CurrentArmatureLocal.animator.SetFloat("Horizontal", _inputs.move.x, 0.1f, Time.deltaTime);
                 _skinView.CurrentArmatureLocal.animator.SetFloat("Vertical", _inputs.move.y, 0.1f, Time.deltaTime);
 
-                PlayClientAnimationByServerRpc(_skinView.CurrentArmatureNetwork.Value, _inputs.move.x, _inputs.move.y, _inputs.jump, _movementController.grounded);
+                PlayClientAnimationByServerRpc(_skinView.CurrentArmatureNetwork.Value, _inputs.move.x, _inputs.move.y, _inputs.jump, _movementController.grounded, _blockStatus, _sprintStatus, _climbStatus, _movementSkillStatus, _rollStatus, _stunStatus);
             }
         }
         if (IsServer && IsOwner)
         {
-            PlayAnimationServerRpc(_skinView.CurrentArmatureNetwork.Value, _inputs.move.x, _inputs.move.y, _inputs.jump, _movementController.grounded);
+            PlayAnimationServerRpc(_skinView.CurrentArmatureNetwork.Value, _inputs.move.x, _inputs.move.y, _inputs.jump, _movementController.grounded, _blockStatus, _sprintStatus, _climbStatus, _movementSkillStatus, _rollStatus, _stunStatus);
         }
     }
 
     [Rpc(SendTo.Server)]
-    private void PlayClientAnimationByServerRpc(NetworkObjectReference armature, float moveX, float moveY, bool jump, bool grounded)
+    private void PlayClientAnimationByServerRpc(NetworkObjectReference armature, float moveX, float moveY, bool jump, bool grounded, bool block, bool sprint, bool climb, bool movementSkill, bool roll, bool stun)
     {
         if (armature.TryGet(out NetworkObject armatureNetworkObject))
         {
@@ -140,9 +167,28 @@ public class PlayerAnimationController : NetworkBehaviour
                     }
                 }
 
-                _cachedComponentNetwork.animator.SetBool("IsFalling", !grounded);
+                if (!climb && !movementSkill)
+                {
+                    _cachedComponentNetwork.animator.SetBool("IsFalling", !grounded);
+                }
 
-                _cachedComponentNetwork.animator.SetBool("IsRunning", _sprintStatus);
+                if (sprint)
+                {
+                    _cachedComponentNetwork.animator.SetFloat("SpeedMultiplier", 1.3f);
+                }
+                else if (block)
+                {
+                    _cachedComponentNetwork.animator.SetFloat("SpeedMultiplier", 0.5f);
+                }
+                else
+                {
+                    _cachedComponentNetwork.animator.SetFloat("SpeedMultiplier", 1f);
+                }
+
+                _cachedComponentNetwork.animator.SetBool("IsBlock", block);
+                _cachedComponentNetwork.animator.SetBool("IsClimbing", climb);
+                _cachedComponentNetwork.animator.SetBool("IsRolling", roll);
+                _cachedComponentNetwork.animator.SetBool("IsStunning", stun);
             }
             else
             {
@@ -156,13 +202,13 @@ public class PlayerAnimationController : NetworkBehaviour
     }
 
     [Rpc(SendTo.Server)]
-    private void PlayAnimationServerRpc(NetworkObjectReference armature, float moveX, float moveY, bool jump, bool grounded)
+    private void PlayAnimationServerRpc(NetworkObjectReference armature, float moveX, float moveY, bool jump, bool grounded, bool block, bool sprint, bool climb, bool movementSkill, bool roll, bool stun)
     {
-        PlayAnimationClientRpc(armature, moveX, moveY, jump, grounded);
+        PlayAnimationClientRpc(armature, moveX, moveY, jump, grounded, block, sprint, climb, movementSkill, roll, stun);
     }
 
     [Rpc(SendTo.ClientsAndHost)]
-    private void PlayAnimationClientRpc(NetworkObjectReference armature, float moveX, float moveY, bool jump, bool grounded)
+    private void PlayAnimationClientRpc(NetworkObjectReference armature, float moveX, float moveY, bool jump, bool grounded, bool block, bool sprint, bool climb, bool movementSkill, bool roll, bool stun)
     {
         if (armature.TryGet(out NetworkObject armatureNetworkObject))
         {
@@ -186,9 +232,28 @@ public class PlayerAnimationController : NetworkBehaviour
                     }
                 }
 
-                _cachedComponentNetwork.animator.SetBool("IsFalling", !grounded);
+                if (!climb && !movementSkill)
+                {
+                    _cachedComponentNetwork.animator.SetBool("IsFalling", !grounded);
+                }
 
-                _cachedComponentNetwork.animator.SetBool("IsRunning", _sprintStatus);
+                if (sprint)
+                {
+                    _cachedComponentNetwork.animator.SetFloat("SpeedMultiplier", 1.3f);
+                }
+                else if(block)
+                {
+                    _cachedComponentNetwork.animator.SetFloat("SpeedMultiplier", 0.5f);
+                }
+                else
+                {
+                    _cachedComponentNetwork.animator.SetFloat("SpeedMultiplier", 1f);
+                }
+
+                _cachedComponentNetwork.animator.SetBool("IsBlock", block);
+                _cachedComponentNetwork.animator.SetBool("IsClimbing", climb);
+                _cachedComponentNetwork.animator.SetBool("IsRolling", roll);
+                _cachedComponentNetwork.animator.SetBool("IsStunning", stun);
             }
             else
             {
@@ -205,6 +270,7 @@ public class PlayerAnimationController : NetworkBehaviour
 
     #region external_methods
 
+    #region trigger_animation
     public void PlayTriggerAnimation(string name)
     {
         if (IsClient && !IsServer && IsOwner)
@@ -257,6 +323,62 @@ public class PlayerAnimationController : NetworkBehaviour
 
     #endregion
 
+    #region bool_animation
+
+    public void PlayBoolAnimation(string name, bool status)
+    {
+        if (IsClient && !IsServer && IsOwner)
+        {
+            _skinView.CurrentArmatureLocal.animator.SetBool(name, status);
+
+            PlayClientBoolAnimationByServerRpc(_skinView.CurrentArmatureNetwork.Value, name, status);
+        }
+        if (IsServer && IsOwner)
+        {
+            PlayBoolAnimationServerRpc(_skinView.CurrentArmatureNetwork.Value, name, status);
+        }
+    }
+
+    [Rpc(SendTo.Server)]
+    private void PlayClientBoolAnimationByServerRpc(NetworkObjectReference armature, string name, bool status)
+    {
+        if (armature.TryGet(out NetworkObject armatureNetworkObject))
+        {
+            if (_lastArmatureNetwork != armatureNetworkObject)
+            {
+                _lastArmatureNetwork = armatureNetworkObject;
+                _cachedComponentNetwork = armatureNetworkObject.GetComponent<PlayerArmature>();
+            }
+
+            _cachedComponentNetwork.animator.SetBool(name, status);
+        }
+    }
+
+    [Rpc(SendTo.Server)]
+    private void PlayBoolAnimationServerRpc(NetworkObjectReference armature, string name, bool status)
+    {
+        PlayBoolAnimationClientRpc(armature, name, status);
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void PlayBoolAnimationClientRpc(NetworkObjectReference armature, string name, bool status)
+    {
+        if (armature.TryGet(out NetworkObject armatureNetworkObject))
+        {
+            if (_lastArmatureNetwork != armatureNetworkObject)
+            {
+                _lastArmatureNetwork = armatureNetworkObject;
+                _cachedComponentNetwork = armatureNetworkObject.GetComponent<PlayerArmature>();
+            }
+
+            _cachedComponentNetwork.animator.SetBool(name, status);
+        }
+    }
+
+    #endregion
+
+    #endregion
+
 
     private void HandlePlayerDeath(ulong playerId)
     {
@@ -265,6 +387,8 @@ public class PlayerAnimationController : NetworkBehaviour
         if (playerId == 0)
         {
             _movementController.disablingPlayerMove = true;
+            _skillsController.SetDisablePlayerSkillsStatus(true);
+            DisablingPlayerAnimator = true;
         }
     }
 
@@ -275,7 +399,9 @@ public class PlayerAnimationController : NetworkBehaviour
         {
             _skinView.CurrentArmatureLocal.animator.SetBool("IsDeath", true);
             _skinView.CurrentArmatureLocal.isEnabledAnimatorIK = false;
+            _skillsController.SetDisablePlayerSkillsStatus(true);
             _movementController.disablingPlayerMove = true;
+            DisablingPlayerAnimator = true;
         }
 
         if (playerId == 0)
@@ -299,6 +425,38 @@ public class PlayerAnimationController : NetworkBehaviour
     public void SetSprintStatus(bool status)
     {
         _sprintStatus = status;
+    }
+
+    public void SetBlockStatus(bool status)
+    {
+        _blockStatus = status;
+    }
+
+    public void SetClimbStatus(bool status)
+    {
+        _climbStatus = status;
+    }
+
+    public void SetMovementSkillStatus(bool status)
+    {
+        _movementSkillStatus = status;
+    }
+
+    public void SetRollStatus(bool status)
+    {
+        _rollStatus = status;
+    }
+
+    public void SetStunStatus(bool status)
+    {
+        if (_healthController.currentHp.Value > 0)
+        {
+            _stunStatus = status;
+        }
+        else
+        {
+            _stunStatus = false;
+        }
     }
 
     public override void OnNetworkDespawn()

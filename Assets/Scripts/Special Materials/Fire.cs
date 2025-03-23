@@ -4,7 +4,10 @@ using UnityEngine;
 using System.Collections.Generic;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
-using Unity.VisualScripting;
+using System;
+using UnityEngine.VFX;
+using UniRx;
+using Unity.Multiplayer.Samples.Utilities.ClientAuthority;
 
 public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActivateSkinMaterialHandler
 {
@@ -18,6 +21,11 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
     private int _initialWispPoolSize = 3;
     private LocalObjectPool _wispPool;
 
+    private GameObject _fireCharge;
+
+    private int _initialFireChargePoolSize = 1;
+    private LocalObjectPool _fireChargePool;
+
     private int _wispLimit = 3;
 
     private bool _isRunningPassiveCoroutine = false;
@@ -26,6 +34,7 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
     private float _minBurnDamage = 5f;
     private float _currentburnDamage;
     private float _chargeTime = 3f;
+    private Coroutine _chargeCoroutine;
 
     private int _maxChargeStage = 3;
     private int _currentChargeStage;
@@ -34,14 +43,16 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
 
     private float _passiveRadius = 10f;
 
-    public override float meleeAttackCooldown { get; } = 0.5f;
-    public override float rangeAttackCooldown { get; } = 0.2f;
-    public override float movementCooldown { get; } = 2f;
+    private IDisposable _deathSubscription;
+
+
+    public override float meleeAttackCooldown { get; } = 6f;
+    public override float rangeAttackCooldown { get; } = 0.3f;
+    public override float movementCooldown { get; } = 3f;
     public override float defenseCooldown { get; } = 5f;
-    public override float specialCooldown { get; } = 1f;
+    public override float specialCooldown { get; } = 2f;
 
     public override string projectilePrefabKey { get; } = ProjectileMapper.GetProjectileKey(ProjectileType.Fire);
-
 
 
     private void Start()
@@ -57,6 +68,18 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
             else
             {
                 Debug.LogError("Failed to load Wisp");
+            }
+        };
+
+        Addressables.LoadAssetAsync<GameObject>("Fire_melee_vfx").Completed += handle =>
+        {
+            if (handle.Status == AsyncOperationStatus.Succeeded)
+            {
+                _fireCharge = handle.Result;
+            }
+            else
+            {
+                Debug.LogError("Failed to load Fire_melee_vfx");
             }
         };
 
@@ -76,7 +99,14 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
 
         if (!_isRunningChargeCoroutine && _currentChargeStage < _maxChargeStage)
         {
-            StartCoroutine(ActivateCharge(_chargeTime));
+            if(!IsServer)
+            {
+                SpawnFireChargeLocal(Player.transform.position);
+            }
+
+            SpawnFireChargeServerRpc(Player.transform.position, ownerId);
+
+            _chargeCoroutine = StartCoroutine(ActivateCharge(_chargeTime));
         }
     }
 
@@ -84,11 +114,14 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
     {
         _isRunningChargeCoroutine = true;
         playerMovementController.disablingPlayerMove = true;
+        playerMovementController.disablingPlayerVerticalMove = true;
         playerAnimationController.DisablingPlayerAnimator = true;
+        playerSkillsController.SetDisablePlayerSkillsStatus(true);
 
         yield return new WaitForSeconds(time);
 
         playerMovementController.disablingPlayerMove = false;
+        playerMovementController.disablingPlayerVerticalMove = false;
         _currentburnDamage *= 1.5f;
         _currentChargeStage++;
 
@@ -96,7 +129,8 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
 
         _isRunningChargeCoroutine = false;
         playerAnimationController.DisablingPlayerAnimator = false;
-
+        playerSkillsController.SetDisablePlayerSkillsStatus(false);
+        playerMovementController.ResetGravityEffect();
     }
 
     private void HandleDamageTaken(float damage)
@@ -107,13 +141,64 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
 
             foreach(GameObject stage in UIReferencesManager.Instance.FillChargeObjects)
             {
-                Debug.Log("Charge active false");
                 stage.SetActive(false);
             }
 
             _currentburnDamage = _minBurnDamage;
         }
 
+    }
+
+    private void SpawnFireChargeLocal(Vector3 fireChargeSpawnPoint)
+    {
+        if (_fireChargePool == null)
+        {
+            if (_fireCharge != null)
+            {
+                _fireChargePool = new LocalObjectPool(_fireCharge, _initialFireChargePoolSize);
+            }
+        }
+
+        GameObject spawnedFireCharge = _fireChargePool.Get(fireChargeSpawnPoint);
+
+        StartCoroutine(ReleaseFireCharge(spawnedFireCharge, _chargeTime, () => _fireChargePool.Release(spawnedFireCharge)));
+    }
+
+    [Rpc(SendTo.Server)]
+    private void SpawnFireChargeServerRpc(Vector3 poisonExplosionSpawnPoint, ulong ownerId)
+    {
+        NetworkObject fireChargeNetwork = NetworkObjectPool.Singleton.GetNetworkObject(_fireCharge, poisonExplosionSpawnPoint);
+        fireChargeNetwork.Spawn();
+
+        if (ownerId != 0)
+        {
+            fireChargeNetwork.NetworkHide(ownerId);
+        }
+
+        StartCoroutine(ReleaseFireCharge(fireChargeNetwork.gameObject, _chargeTime, () =>
+        {
+            if (IsServer)
+            {
+                if (fireChargeNetwork.IsSpawned)
+                {
+                    fireChargeNetwork.Despawn();
+                }
+            }
+        }));
+    }
+
+    private IEnumerator ReleaseFireCharge(GameObject obj, float duration, Action releaseAction)
+    {
+        yield return new WaitForSeconds(duration);
+
+        if (obj.TryGetComponent(out VisualEffect visualEffect))
+        {
+            visualEffect.Stop();
+        }
+
+        yield return new WaitForSeconds(0.5f);
+
+        releaseAction?.Invoke();
     }
 
     #endregion
@@ -278,18 +363,32 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
         {
             StartCoroutine(Teleport(hit.collider.gameObject.transform.position));
         }
+        else
+        {
+            if(lastMovementTime == Time.time)
+            {
+                Debug.Log("Test");
+            }
+        }
     }
 
     private IEnumerator Teleport(Vector3 position)
     {
+        CharacterController characterController = Player.GetComponent<CharacterController>();
+
         playerMovementController.disablingPlayerJumpAndGravity = true;
         playerMovementController.disablingPlayerMove = true;
+        playerMovementController.disablingPlayerVerticalMove = true;
+        characterController.enabled = false;
 
+        Player.transform.position = position;
         playerNetworkTransform.Teleport(position, Player.transform.rotation, Player.transform.localScale);
         yield return new WaitForSeconds(0.2f);
 
         playerMovementController.disablingPlayerJumpAndGravity = false;
         playerMovementController.disablingPlayerMove = false;
+        playerMovementController.disablingPlayerVerticalMove = false;
+        characterController.enabled = true;
     }
 
     #endregion
@@ -304,11 +403,11 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
     private IEnumerator ActivateAstral()
     {
         EnableAstral();
-        UpdateAstralStateRpc(true, ownerId, player.GetComponent<NetworkObject>());
+        UpdateAstralStateRpc(true, ownerId, Player.GetComponent<NetworkObject>());
 
         yield return new WaitForSeconds(_astralDuration);
 
-        UpdateAstralStateRpc(false, ownerId, player.GetComponent<NetworkObject>());
+        UpdateAstralStateRpc(false, ownerId, Player.GetComponent<NetworkObject>());
         DisableAstral();
     }
 
@@ -317,6 +416,10 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
         playerMovementController.disablingPlayerJumpAndGravity = true;
         playerMovementController.disablingPlayerMove = true;
         playerHealthController.healthStats.isImmortal = true;
+        playerSkillsController.disablingPlayerShootingDuringMovementSkill = true;
+        playerSkillsController.SetDisablePlayerSkillsStatus(true);
+
+        playerMovementController.ResetGravityEffect();
 
         if (IsServer)
         {
@@ -348,6 +451,9 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
         playerHealthController.healthStats.isImmortal = false;
         playerMovementController.disablingPlayerJumpAndGravity = false;
         playerMovementController.disablingPlayerMove = false;
+        playerSkillsController.disablingPlayerShootingDuringMovementSkill = false;
+        playerSkillsController.SetDisablePlayerSkillsStatus(false);
+        playerMovementController.ResetGravityEffect();
     }
 
     [Rpc(SendTo.Server)]
@@ -523,7 +629,6 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
 
     public void ChangeSkinAction()
     {
-        // Charge lvl reset
         _currentChargeStage = 0;
 
         foreach (GameObject stage in UIReferencesManager.Instance.FillChargeObjects)
@@ -553,6 +658,43 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
 
     public void ActivateSkinMaterialAction()
     {
+        if (_deathSubscription == null)
+        {
+            _deathSubscription = playerHealthController.OnDeath
+                .Subscribe(HandlePlayerDeath);
+        }
+
         UIReferencesManager.Instance.FireChargeDisplayer.SetActive(true);
+    }
+
+    private void HandlePlayerDeath(ulong obj)
+    {
+        if (_chargeCoroutine != null)
+        {
+            StopCoroutine(_chargeCoroutine);
+
+            _isRunningChargeCoroutine = false;
+            playerMovementController.disablingPlayerVerticalMove = false;
+            playerMovementController.ResetGravityEffect();
+
+        }
+
+        if (_currentburnDamage != _minBurnDamage && _currentChargeStage != 0)
+        {
+            _currentChargeStage = 0;
+
+            foreach (GameObject stage in UIReferencesManager.Instance.FillChargeObjects)
+            {
+                stage.SetActive(false);
+            }
+
+            _currentburnDamage = _minBurnDamage;
+        }
+    }
+
+    public override void OnDestroy()
+    {
+        _deathSubscription?.Dispose();
+        _deathSubscription = null;
     }
 }

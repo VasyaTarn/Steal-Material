@@ -17,56 +17,64 @@ MonoBehaviour:
     hit the target.</b></size>
 
 
-    Damage: n
+    Damage: 5
 
-    Fire rate: n'
+    Fire rate: 300 rpm'
   _passiveDescription: '<size=22><b>The implementation of the principle of photosynthesis,
     which provides the character with constant regeneration. Also, the passive ability
     allows you to climb walls.</b></size>
 
 
-    Health regeneration per second: n
+    Health regeneration per second: 10
 
     Climbing
-    speed: n'
+    speed: 3'
   _meleeDescription: '<size=22><b>Explosion of toxic cloud around the character causing
     damage in radius.</b></size>
 
 
-    Damage: n
+    Damage: 25
 
-    Radius: n
+    Radius: 5
 
-    Cooldown: ns'
+    Cooldown: 2
+    s'
   _movementDescription: '<size=22><b>The character releases a vine from the body
     to pull itself towards an object.</b></size>
 
 
-    Vine length: n
+    Vine length: 70
 
     Cooldown:
-    ns'
+    5 s'
   _defenseDescription: '<size=22><b>The character covers his body with spikes and
     returns all received damage back to the enemy.</b></size>
 
 
-    Duration: ns
+    Duration: 4 s
 
     Damage
-    return percentage: n%
+    return percentage: 110 %
 
-    Cooldown: ns'
+    Cooldown: 7 s'
   _specialDescription: '<size=22><b>Summons living mushrooms at the cost of his health,
-    which follow the enemy and explode upon contact. Can be destroyed for *x shots
-    / damage*. When mushrooms explode, they apply a slow effect to the enemy and
-    self-destruct. </b></size>
+    which follow the enemy and explode upon contact. Destroyed 15 seconds after spawning*.
+    When mushrooms explode, they apply a slow effect to the enemy and self-destruct.
+    </b></size>
 
 
-    Mushroom speed: n
+    Mushroom speed: 3.5
 
-    Damage: n
+    Damage: 30
 
-    Slow duration:
-    ns
+    Slow: 20%
 
-    Explosion radius: n'
+    Slow
+    duration: 2 s
+
+    Explosion radius: 3
+
+    Cooldown: 3 s
+
+    Cost of health:
+    50'

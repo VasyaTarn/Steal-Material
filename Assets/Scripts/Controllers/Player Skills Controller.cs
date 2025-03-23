@@ -105,6 +105,7 @@ public class PlayerSkillsController : NetworkBehaviour
                     _skin.skills.Movement();
                     UIReferencesManager.Instance.Movement.ActivateCooldown(_skin.skills.movementCooldown);
                     _skin.skills.lastMovementTime = Time.time;
+                    
                 }
 
                 if (_inputs.defense && Time.time >= _skin.skills.lastDefenseTime + _skin.skills.defenseCooldown && !_playerMovementController.currentMovementStats.isStuned.Value)
@@ -136,5 +137,10 @@ public class PlayerSkillsController : NetworkBehaviour
         enemyMovementController = enemy.GetComponent<PlayerMovementController>();
         enemySkillsController = enemy.GetComponent<PlayerSkillsController>();
         enemyObjectReferences = enemy.GetComponent<PlayerObjectReferences>();
+    }
+
+    public void SetDisablePlayerSkillsStatus(bool status)
+    {
+        _skin.disablingPlayerSkills = status;
     }
 }

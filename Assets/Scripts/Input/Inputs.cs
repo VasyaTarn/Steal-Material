@@ -23,6 +23,7 @@ public class Inputs : NetworkBehaviour
     private bool _defenseTriggered;
     private bool _specialTriggered;
 
+
     private void Update()
     {
         if (!IsOwner) return;
@@ -47,8 +48,10 @@ public class Inputs : NetworkBehaviour
     public void OnMove(InputValue value)
     {
         if (!IsOwner) return;
+        
         move = value.Get<Vector2>();
         SendMoveServerRpc(move);
+        
     }
 
     public void OnLook(InputValue value)
@@ -193,118 +196,4 @@ public class Inputs : NetworkBehaviour
     {
         special = true;
     }
-
-
-
-
-
-
-
-    /*[Header("Character Input Values")]
-    public Vector2 move;
-    public Vector2 look;
-    public bool jump;
-    public bool steal;
-    public bool meleeAttack;
-    public bool aim;
-    public bool shoot;
-    public bool movementSkill;
-    public bool defense;
-    public bool special;
-
-    private bool _stealTriggered;
-    private bool _meleeAttackTriggered;
-    private bool _movementSkillTriggered;
-    private bool _defenseTriggered;
-    private bool _specialTriggered;
-
-    private void Update()
-    {
-        if (!IsOwner) return;
-
-        ResetTriggers();
-    }
-
-    private void ResetTriggers()
-    {
-        steal = _stealTriggered;
-        meleeAttack = _meleeAttackTriggered;
-        movementSkill = _movementSkillTriggered;
-        defense = _defenseTriggered;
-        special = _specialTriggered;
-
-        _stealTriggered = false;
-        _meleeAttackTriggered = false;
-        _movementSkillTriggered = false;
-        _defenseTriggered = false;
-        _specialTriggered = false;
-    }
-
-    public void OnMove(InputValue value)
-    {
-        if (!IsOwner) return;
-        move = value.Get<Vector2>();
-    }
-
-    public void OnLook(InputValue value)
-    {
-        if (!IsOwner) return;
-        look = value.Get<Vector2>();
-    }
-
-    public void OnJump(InputValue value)
-    {
-        if (!IsOwner) return;
-        if (!PauseScreen.isPause)
-        {
-            jump = value.isPressed;
-        }
-    }    
-
-    public void OnSteal(InputValue value)
-    {
-        if (!IsOwner) return;
-        if (value.isPressed)
-            _stealTriggered = true;
-    }
-
-    public void OnMeleeAttack(InputValue value)
-    {
-        if (!IsOwner) return;
-        if (value.isPressed)
-            _meleeAttackTriggered = true;
-    }
-
-    public void OnAim(InputValue value)
-    {
-        if (!IsOwner) return;
-        aim = value.isPressed;
-    }
-
-    public void OnShoot(InputValue value)
-    {
-        if (!IsOwner) return;
-        shoot = value.isPressed;
-    }
-
-    public void OnMovementSkill(InputValue value)
-    {
-        if (!IsOwner) return;
-        if (value.isPressed)
-            _movementSkillTriggered = true;
-    }
-
-    public void OnDefense(InputValue value)
-    {
-        if (!IsOwner) return;
-        if (value.isPressed)
-            _defenseTriggered = true;
-    }
-
-    public void OnSpecial(InputValue value)
-    {
-        if (!IsOwner) return;
-        if (value.isPressed)
-            _specialTriggered = true;
-    }*/
 }

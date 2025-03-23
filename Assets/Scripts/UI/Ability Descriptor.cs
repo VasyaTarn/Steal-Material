@@ -28,6 +28,14 @@ public class AbilityDescriptor : MonoBehaviour
             _abilitiesDescriptionUI.gameObject.SetActive(descriptorActiveStatus);
             _abilitiesDescriptionButton.gameObject.SetActive(!descriptorActiveStatus);
         }
+
+        if(Input.GetKeyDown(KeyCode.Escape) && descriptorActiveStatus)
+        {
+            descriptorActiveStatus = false;
+
+            _abilitiesDescriptionUI.gameObject.SetActive(false);
+            _abilitiesDescriptionButton.gameObject.SetActive(true);
+        }
     }
 
     public void ChangeAbilitiesDescription(AbilityDescription abilityDescription)

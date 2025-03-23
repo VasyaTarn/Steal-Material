@@ -10,11 +10,11 @@ public abstract class BulletProjectile : NetworkBehaviour
     [SerializeField] protected float damage;
 
 
-    public bool isNetworkObject = false;
+    protected bool isNetworkObject = false;
     protected Action onReleaseCallback;
     protected ulong ownerId;
 
-    public Crosshair _crosshair;
+    protected Crosshair _crosshair;
 
     protected virtual void Start()
     {

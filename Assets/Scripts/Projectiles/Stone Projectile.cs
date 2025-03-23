@@ -40,8 +40,11 @@ public class StoneProjectile : BulletProjectile
 
     void FixedUpdate()
     {
-        Vector3 customGravity = new Vector3(0, -2f, 0);
-        projectileRigidbody.AddForce(customGravity, ForceMode.Acceleration);
+        if (projectileRigidbody != null)
+        {
+            Vector3 customGravity = new Vector3(0, -2f, 0);
+            projectileRigidbody.AddForce(customGravity, ForceMode.Acceleration);
+        }
     }
 
     public override void Movement(Vector3 direction, Action releaseCallback)
@@ -58,24 +61,37 @@ public class StoneProjectile : BulletProjectile
 
     protected override void OnTrigger(Collider target)
     {
-        if (isNetworkObject && target.TryGetComponent(out PlayerHealthController healthController))
+        if (target.TryGetComponent(out PlayerHealthController healthController))
         {
             NetworkObject targetNetwork = target.gameObject.GetComponent<NetworkObject>();
             PlayerMovementController movementController = target.gameObject.GetComponent<PlayerMovementController>();
 
-            if (healthController != null && targetNetwork.OwnerClientId != ownerId && movementController != null)
+            if (healthController != null)
             {
-                if (!movementController.currentMovementStats.isStuned.Value)
+                if (isNetworkObject)
                 {
-                    healthController.TakeDamage(damage);
+                    if (targetNetwork.OwnerClientId != ownerId && movementController != null)
+                    {
+                        if (!movementController.currentMovementStats.isStuned.Value)
+                        {
+                            healthController.TakeDamage(damage);
+                        }
+                        else
+                        {
+                            healthController.TakeDamage(damage * 2f);
+                        }
+                    }
                 }
                 else
                 {
-                    healthController.TakeDamage(damage * 5);
+                    _crosshair.AnimateDamageResize();
                 }
             }
         }
 
-        onReleaseCallback?.Invoke();
+        if (!target.CompareTag("CapturePoint"))
+        {
+            onReleaseCallback?.Invoke();
+        }
     }
 }

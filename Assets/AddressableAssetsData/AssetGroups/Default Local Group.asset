@@ -96,6 +96,26 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2d34164bab7b01d41ad31df3c9231efb
+    m_Address: Poison_explosion_summon
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9769624edd03df344986c287a4560c97
+    m_Address: Poison_explosion_player
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 69f7f72a41573044ca77cd79f9c1f7e2
+    m_Address: Fire_vfx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 7bf7709c55c158c4ebe32fdfa108f0bc
+    m_Address: Fire_melee_vfx
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: 55e7bb5456f489248aa3e8149250f216, type: 2}
   m_SchemaSet:

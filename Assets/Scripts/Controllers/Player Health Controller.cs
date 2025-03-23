@@ -52,22 +52,36 @@ public class PlayerHealthController : NetworkBehaviour
         currentHp.OnValueChanged += OnHealthChanged;
     }
 
+    private void Update()
+    {
+        if (IsOwner)
+        {
+            if (Input.GetKeyDown(KeyCode.K))
+            {
+                this.TakeDamage(100f);
+            }
+        }
+    }
+
     private void OnHealthChanged(float oldValue, float newValue)
     {
         if (IsOwner)
         {
-            vignetteTween?.Kill();
+            if (oldValue > newValue)
+            {
+                vignetteTween?.Kill();
 
-            vignetteTween = DOTween.To(() => _vignette.intensity.value,
-                                       x => _vignette.intensity.value = x,
-                                       0.2f, _duration)
-                .SetLoops(2, LoopType.Yoyo)
-                .SetEase(Ease.InOutSine)
-                .OnComplete(() =>
-                {
-                    _vignette.intensity.value = 0;
-                    vignetteTween = null;         
-                });
+                vignetteTween = DOTween.To(() => _vignette.intensity.value,
+                                           x => _vignette.intensity.value = x,
+                                           0.3f, _duration)
+                    .SetLoops(2, LoopType.Yoyo)
+                    .SetEase(Ease.InOutSine)
+                    .OnComplete(() =>
+                    {
+                        _vignette.intensity.value = 0;
+                        vignetteTween = null;
+                    });
+            }
 
         }
 
@@ -138,7 +152,7 @@ public class PlayerHealthController : NetworkBehaviour
 
         if (currentHp.Value <= 0)
         {
-            Die();
+            DieRpc();
         }
     }
 
@@ -149,7 +163,7 @@ public class PlayerHealthController : NetworkBehaviour
 
         if (currentHp.Value <= 0)
         {
-            Die();
+            DieRpc();
         }
     }
 
@@ -162,10 +176,10 @@ public class PlayerHealthController : NetworkBehaviour
 
         currentHp.Value -= number;
 
-        if (_healthBarImage != null)
+        /*if (_healthBarImage != null)
         {
             _healthBarImage.fillAmount = currentHp.Value / healthStats.maxHp;
-        }
+        }*/
     }
 
     [ClientRpc]
@@ -182,12 +196,16 @@ public class PlayerHealthController : NetworkBehaviour
             currentHp.Value += numberHP;
         }
 
-        _healthBarImage.fillAmount = currentHp.Value / healthStats.maxHp;
+        //_healthBarImage.fillAmount = currentHp.Value / healthStats.maxHp;
     }
 
-    private void Die()
+    [Rpc(SendTo.ClientsAndHost)]
+    private void DieRpc()
     {
-        _onDeathSubject.OnNext(OwnerClientId);
+        if (IsOwner)
+        {
+            _onDeathSubject.OnNext(OwnerClientId);
+        }
         //OnDeth?.Invoke(OwnerClientId);
     }
 

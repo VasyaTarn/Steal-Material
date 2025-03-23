@@ -39,6 +39,12 @@ public class GameTimer : NetworkBehaviour
                 }
             }
         }
+
+        if(IsClient && !IsServer)
+        {
+            UpdateMinuteTimerRpc(_minuteTicks.Value);
+            UpdateSecondTimerRpc(_secondTicks.Value);
+        }
     }
 
     private void AddTick()

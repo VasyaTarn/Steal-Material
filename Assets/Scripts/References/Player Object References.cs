@@ -20,6 +20,7 @@ public class PlayerObjectReferences : NetworkBehaviour
     [SerializeField] private Transform _stoneMeleePointPosition;
     [SerializeField] private Transform _stoneDefensePointPosition;
     [SerializeField] private Transform[] _stoneSpecialSmokePositions;
+    [SerializeField] private GameObject _stoneMovementObject;
 
     [Header("Fire Objects")]
     [SerializeField] private GameObject _fireModelLocal;
@@ -39,6 +40,7 @@ public class PlayerObjectReferences : NetworkBehaviour
     public NetworkVariable<NetworkObjectReference> FireModelNetwork => _fireModelNetwork;
     public GameObject BasicSkillRadius => _basicSkillRadius;
     public GameObject FireSkillRadius => _fireSkillRadius;
+    public GameObject StoneMovementObject => _stoneMovementObject;
 
     private void Start()
     {

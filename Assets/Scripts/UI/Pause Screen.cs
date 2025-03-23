@@ -1,12 +1,10 @@
-using DG.Tweening;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class PauseScreen : MonoBehaviour
 {
     private Image _pauseBackground;
+    [SerializeField] private GameObject _mouseSensitivity;
 
     public static bool isPause;
 
@@ -21,6 +19,7 @@ public class PauseScreen : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             _pauseBackground.enabled = !_pauseBackground.enabled;
+            _mouseSensitivity.SetActive(!_mouseSensitivity.activeSelf);
 
             if(_pauseBackground.enabled)
             {
@@ -34,6 +33,16 @@ public class PauseScreen : MonoBehaviour
                 Cursor.lockState = CursorLockMode.Locked;
                 isPause = false;
             }
+        }
+
+        if (Input.GetKeyDown(KeyCode.F1) && _pauseBackground.enabled)
+        {
+            _pauseBackground.enabled = false;
+            _mouseSensitivity.SetActive(false);
+
+            Cursor.visible = false;
+            Cursor.lockState = CursorLockMode.Locked;
+            isPause = false;
         }
     }
 

@@ -28,7 +28,7 @@ public class Basic : MaterialSkills, ISkinMaterialChanger, IUpdateHandler
     private float _specialRaduis = 10f;
 
     public override float meleeAttackCooldown { get; } = 1f;
-    public override float rangeAttackCooldown { get; } = 1f;
+    public override float rangeAttackCooldown { get; } = 0.5f;
     public override float movementCooldown { get; } = 0f;
     public override float defenseCooldown { get; } = 0f;
     public override float specialCooldown { get; } = 5f;
@@ -70,6 +70,13 @@ public class Basic : MaterialSkills, ISkinMaterialChanger, IUpdateHandler
 
         playerAnimationController.PlayTriggerAnimation("BasicMeleeAttack");
 
+        StartCoroutine(PerformAttack());
+    }
+
+    private IEnumerator PerformAttack()
+    {
+        yield return new WaitForSeconds(0.2f);
+
         if (!IsServer)
         {
             SpawnClawLocal(playerObjectReferences.BasicMeleePointPosition.position);
@@ -86,7 +93,7 @@ public class Basic : MaterialSkills, ISkinMaterialChanger, IUpdateHandler
             if (playerNetworkObject != null && playerNetworkObject.OwnerClientId != ownerId)
             {
 
-                playerSkillsController.enemyHealthController.TakeDamage(10);
+                playerSkillsController.enemyHealthController.TakeDamage(20);
             }
         }
     }
@@ -409,7 +416,10 @@ public class Basic : MaterialSkills, ISkinMaterialChanger, IUpdateHandler
     public override void Defense()
     {
         _sprintStatus = false;
+        playerAnimationController.SetSprintStatus(_sprintStatus);
+
         _inBlock = !_inBlock;
+        playerAnimationController.SetBlockStatus(_inBlock);
 
         if (_inBlock)
         {
@@ -467,6 +477,8 @@ public class Basic : MaterialSkills, ISkinMaterialChanger, IUpdateHandler
     private void DisableDefenseDuringOtherSkills()
     {
         _inBlock = false;
+        playerAnimationController.SetBlockStatus(_inBlock);
+
         DisableDefense();
     }
 

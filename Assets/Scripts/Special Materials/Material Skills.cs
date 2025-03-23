@@ -7,9 +7,7 @@ using Unity.Multiplayer.Samples.Utilities.ClientAuthority;
 
 public abstract class MaterialSkills : NetworkBehaviour
 {
-    public Animator animator;
-
-    public GameObject player;
+    private GameObject player;
     public Action<GameObject> OnPlayerChanged;
 
     private Dictionary<GameObject, (Inputs inputs, PlayerMovementController movement, PlayerHealthController health, PlayerSkillsController skills, SkinContoller skin, ClientNetworkTransform networkTransform, PlayerObjectReferences playerObjectReferences, PlayerAnimationController playerAnimation)> _playerComponents = new Dictionary<GameObject, (Inputs, PlayerMovementController, PlayerHealthController, PlayerSkillsController, SkinContoller, ClientNetworkTransform, PlayerObjectReferences, PlayerAnimationController)>();

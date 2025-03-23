@@ -99,6 +99,11 @@ PrefabInstance:
       propertyPath: m_LocalPosition.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -259790257728398531, guid: b082d7ed605748945ab5157889d03abe,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: daa15e454ef9bdd41afc1b8307e78560, type: 2}
     - target: {fileID: 919132149155446097, guid: b082d7ed605748945ab5157889d03abe,
         type: 3}
       propertyPath: m_Name
@@ -109,6 +114,11 @@ PrefabInstance:
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2335597365439280782, guid: b082d7ed605748945ab5157889d03abe,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: daa15e454ef9bdd41afc1b8307e78560, type: 2}
     - target: {fileID: 5866666021909216657, guid: b082d7ed605748945ab5157889d03abe,
         type: 3}
       propertyPath: m_Enabled
@@ -165,7 +175,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 120419170
+  GlobalObjectIdHash: 1651111373
   InScenePlacedSourceGlobalObjectIdHash: 0
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1

@@ -38,10 +38,16 @@ public class FireProjectile : BulletProjectile
         {
             if (!IsServer)
             {
-                SpawnExplosionLocal(hit.point + hit.normal * 3.5f);
+                if (!other.CompareTag("CapturePoint"))
+                {
+                    SpawnExplosionLocal(hit.point + hit.normal * 3.5f);
+                }
             }
 
-            SpawnExplosionServerRpc(hit.point + hit.normal * 3.5f, ownerId);
+            if (!other.CompareTag("CapturePoint"))
+            {
+                SpawnExplosionServerRpc(hit.point + hit.normal * 3.5f, ownerId);
+            }
         }
 
         OnTrigger(other);
@@ -83,7 +89,10 @@ public class FireProjectile : BulletProjectile
             }
         }
 
-        onReleaseCallback?.Invoke();
+        if (!target.CompareTag("CapturePoint"))
+        {
+            onReleaseCallback?.Invoke();
+        }
     }
 
     private void SpawnExplosionLocal(Vector3 explosionSpawnPoint)
