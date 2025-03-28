@@ -42,7 +42,7 @@ public class StoneProjectile : BulletProjectile
     {
         if (projectileRigidbody != null)
         {
-            Vector3 customGravity = new Vector3(0, -2f, 0);
+            Vector3 customGravity = new Vector3(0, -1f, 0);
             projectileRigidbody.AddForce(customGravity, ForceMode.Acceleration);
         }
     }

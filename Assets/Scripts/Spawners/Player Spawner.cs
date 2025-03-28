@@ -25,6 +25,8 @@ public class PlayerSpawner : NetworkBehaviour
     private readonly Subject<PlayerHealthController> _onPlayerHealthControllerChangedSubject = new Subject<PlayerHealthController>();
 
     public IObservable<PlayerHealthController> OnPlayerHealthControllerChanged => _onPlayerHealthControllerChangedSubject;
+    public GameObject HostBarrier => _hostBarrier;
+    public GameObject ClientBarrier => _clientBarrier;
 
     //public event Action<PlayerHealthController> OnPlayerHealthControllerChanged;
 
@@ -63,7 +65,7 @@ public class PlayerSpawner : NetworkBehaviour
 
             if (NetworkManager.Singleton.ConnectedClientsList.Count > 1)
             {
-                StartCoroutine(BarrierTimer(5f));
+                StartCoroutine(BarrierTimer(10f));
                 UIReferencesManager.Instance.WaitingOpponentText.gameObject.SetActive(false);
             }
             else

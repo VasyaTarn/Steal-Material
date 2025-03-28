@@ -138,7 +138,9 @@ public class CapturePoint : NetworkBehaviour
         {
             ulong ownerId = other.GetComponent<NetworkObject>().OwnerClientId;
 
-            _players.Remove(ownerId);
+            ExitAction(ownerId);
+
+            /*_players.Remove(ownerId);
 
             if (_increaseCorotine != null && _players.Count == 0)
             {
@@ -160,6 +162,33 @@ public class CapturePoint : NetworkBehaviour
                 {
                     _decreaseCorotine = StartCoroutine(DecreasePoints());
                 }
+            }*/
+        }
+    }
+
+    public void ExitAction(ulong ownerId)
+    {
+        _players.Remove(ownerId);
+
+        if (_increaseCorotine != null && _players.Count == 0)
+        {
+            StopCoroutine(_increaseCorotine);
+
+            if (_decreaseCorotine != null)
+            {
+                StopCoroutine(_decreaseCorotine);
+            }
+        }
+
+        if (_players.Count == 1)
+        {
+            if (ownerId != _units.ownerId.Value)
+            {
+                _increaseCorotine = StartCoroutine(IncreasePoints());
+            }
+            else
+            {
+                _decreaseCorotine = StartCoroutine(DecreasePoints());
             }
         }
     }
@@ -342,8 +371,11 @@ public class CapturePoint : NetworkBehaviour
 
         if(IsServer)
         {
-            UpdateCaptureLockUIRpc();
-            _isLockUp = false;
+            if (NetworkManager.Singleton.ConnectedClientsList.Count > 1)
+            {
+                UpdateCaptureLockUIRpc();
+                _isLockUp = false;
+            }
         }
     }
 

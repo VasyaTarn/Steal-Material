@@ -6,6 +6,7 @@ using UniRx;
 using UnityEngine.Rendering.HighDefinition;
 using UnityEngine.Rendering;
 using DG.Tweening;
+using System.Collections;
 
 public class PlayerHealthController : NetworkBehaviour
 {
@@ -61,6 +62,8 @@ public class PlayerHealthController : NetworkBehaviour
                 this.TakeDamage(100f);
             }
         }
+
+
     }
 
     private void OnHealthChanged(float oldValue, float newValue)

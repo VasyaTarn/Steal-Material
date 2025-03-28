@@ -92,11 +92,6 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
     #region Melee
     public override void MeleeAttack()
     {
-        if (playerHealthController.OnDamageTaken == null)
-        {
-            playerHealthController.OnDamageTaken += HandleDamageTaken;
-        }
-
         if (!_isRunningChargeCoroutine && _currentChargeStage < _maxChargeStage)
         {
             if(!IsServer)
@@ -244,6 +239,7 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
                 {
                     if (!child.enabled)
                     {
+                        child.Clear();
                         child.enabled = true;
                     }
                 }
@@ -298,6 +294,7 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
                 {
                     if (!child.enabled)
                     {
+                        child.Clear();
                         child.enabled = true;
                     }
                 }
@@ -308,45 +305,29 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
 
         bulletProjectile.SetOwnerId(ownerId);
 
-        if (NetworkManager.Singleton.ConnectedClients.TryGetValue(ownerId, out NetworkClient networkClient))
+        bulletProjectile.Movement(aimDir, () =>
         {
-            CharacterController characterController = networkClient.PlayerObject.gameObject.GetComponent<CharacterController>();
-            Collider projectileCollider = projectile.GetComponent<Collider>();
-
-            if (characterController != null && projectileCollider != null)
+            if (IsServer)
             {
-                Physics.IgnoreCollision(projectileCollider, characterController, true);
-            }
-
-            bulletProjectile.Movement(aimDir, () =>
-            {
-                if (IsServer)
+                if (projectile.IsSpawned)
                 {
-                    if (projectile.IsSpawned)
+                    if (projectile != null && projectile.transform.childCount > 0)
                     {
-                        if (characterController != null)
+                        for (int i = 0; i < projectile.transform.childCount; i++)
                         {
-                            Physics.IgnoreCollision(projectileCollider, characterController, false);
-                        }
-
-                        if (projectile != null && projectile.transform.childCount > 0)
-                        {
-                            for (int i = 0; i < projectile.transform.childCount; i++)
+                            TrailRenderer child = projectile.transform.GetChild(i).GetComponent<TrailRenderer>();
+                            if (child != null)
                             {
-                                TrailRenderer child = projectile.transform.GetChild(i).GetComponent<TrailRenderer>();
-                                if (child != null)
-                                {
-                                    child.Clear();
-                                    child.enabled = false;
-                                }
+                                child.Clear();
+                                child.enabled = false;
                             }
                         }
-
-                        projectile.Despawn();
                     }
+
+                    projectile.Despawn();
                 }
-            });
-        }
+            }
+        });
     }
 
     #endregion
@@ -404,11 +385,13 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
     {
         EnableAstral();
         UpdateAstralStateRpc(true, ownerId, Player.GetComponent<NetworkObject>());
+        ChangeActiveStatusAstralVisualObjectRpc(Player.GetComponent<NetworkObject>(), true);
 
         yield return new WaitForSeconds(_astralDuration);
 
         UpdateAstralStateRpc(false, ownerId, Player.GetComponent<NetworkObject>());
         DisableAstral();
+        ChangeActiveStatusAstralVisualObjectRpc(Player.GetComponent<NetworkObject>(), false);
     }
 
     private void EnableAstral()
@@ -487,6 +470,15 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
                     }
                 }
             }
+        }
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    private void ChangeActiveStatusAstralVisualObjectRpc(NetworkObjectReference player, bool status)
+    {
+        if (player.TryGet(out NetworkObject playerNetworkObject))
+        {
+            playerNetworkObject.GetComponent<PlayerObjectReferences>().AstralVisualObject.SetActive(status);
         }
     }
 
@@ -604,6 +596,7 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
 
         foreach (Collider collider in hitColliders)
         {
+
             NetworkObject playerNetworkObject = collider.gameObject.GetComponent<NetworkObject>();
             if (playerNetworkObject != null && playerNetworkObject.OwnerClientId != ownerId)
             {
@@ -643,6 +636,8 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
         {
             playerObjectReferences.FireSkillRadius.SetActive(false);
         }
+
+        playerHealthController.OnDamageTaken -= HandleDamageTaken;
     }
 
     public void HandleUpdate()
@@ -658,6 +653,8 @@ public class Fire : MaterialSkills, ISkinMaterialChanger, IUpdateHandler, IActiv
 
     public void ActivateSkinMaterialAction()
     {
+        playerHealthController.OnDamageTaken += HandleDamageTaken;
+
         if (_deathSubscription == null)
         {
             _deathSubscription = playerHealthController.OnDeath

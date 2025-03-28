@@ -218,6 +218,7 @@ public class Basic : MaterialSkills, ISkinMaterialChanger, IUpdateHandler
                 {
                     if (!trailRenderer.enabled)
                     {
+                        trailRenderer.Clear();
                         trailRenderer.enabled = true;
                     }
                 }
@@ -243,7 +244,8 @@ public class Basic : MaterialSkills, ISkinMaterialChanger, IUpdateHandler
                 }
             }
 
-            StartCoroutine(DelayRelease(projectile, 0.2f));
+            _projectilePool.Release(projectile);
+            //StartCoroutine(DelayRelease(projectile, 0.2f));
         });
     }
 
@@ -266,6 +268,10 @@ public class Basic : MaterialSkills, ISkinMaterialChanger, IUpdateHandler
             projectile.NetworkHide(ownerId);
         }
 
+        BulletProjectile bulletProjectile = projectile.GetComponent<BulletProjectile>();
+
+        bulletProjectile.SetOwnerId(ownerId);
+
         if (projectile != null && projectile.transform.childCount > 0)
         {
             for (int i = 0; i < projectile.transform.childCount; i++)
@@ -274,15 +280,48 @@ public class Basic : MaterialSkills, ISkinMaterialChanger, IUpdateHandler
                 {
                     if (!trailRenderer.enabled)
                     {
+                        trailRenderer.Clear();
                         trailRenderer.enabled = true;
                     }
                 }
             }
         }
 
+        projectile.GetComponent<BulletProjectile>().Movement(aimDir, () =>
+        {
+            if (IsServer)
+            {
+                if (projectile.IsSpawned)
+                {
+                    /*if (characterController != null)
+                    {
+                        Physics.IgnoreCollision(projectileCollider, characterController, false);
+                    }*/
 
+                    if (projectile != null && projectile.transform.childCount > 0)
+                    {
+                        for (int i = 0; i < projectile.transform.childCount; i++)
+                        {
+                            if (projectile.transform.GetChild(i).TryGetComponent(out TrailRenderer trailRenderer))
+                            {
+                                trailRenderer.Clear();
+                                trailRenderer.enabled = false;
+                            }
 
-        if (NetworkManager.Singleton.ConnectedClients.TryGetValue(ownerId, out NetworkClient networkClient))
+                            if (projectile.transform.GetChild(i).TryGetComponent(out VisualEffect visualEffect))
+                            {
+                                visualEffect.Stop();
+                            }
+                        }
+                    }
+
+                    projectile.Despawn();
+                    //StartCoroutine(DelayDespawn(projectile, 0.2f));
+                }
+            }
+        });
+
+        /*if (NetworkManager.Singleton.ConnectedClients.TryGetValue(ownerId, out NetworkClient networkClient))
         {
             CharacterController characterController = networkClient.PlayerObject.gameObject.GetComponent<CharacterController>();
             Collider projectileCollider = projectile.GetComponent<Collider>();
@@ -313,7 +352,7 @@ public class Basic : MaterialSkills, ISkinMaterialChanger, IUpdateHandler
                                     trailRenderer.enabled = false;
                                 }
 
-                                if(projectile.transform.GetChild(i).TryGetComponent(out VisualEffect visualEffect))
+                                if (projectile.transform.GetChild(i).TryGetComponent(out VisualEffect visualEffect))
                                 {
                                     visualEffect.Stop();
                                 }
@@ -324,7 +363,8 @@ public class Basic : MaterialSkills, ISkinMaterialChanger, IUpdateHandler
                     }
                 }
             });
-        }
+        }*/
+
     }
 
     private IEnumerator DelayRelease(GameObject projectile, float delay)

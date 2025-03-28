@@ -16,7 +16,7 @@ PrefabInstance:
     - target: {fileID: -3264333030687258374, guid: e2e80a6203cc91843b1ed340fd568fb2,
         type: 3}
       propertyPath: m_Name
-      value: Model
+      value: Stone
       objectReference: {fileID: 0}
     - target: {fileID: -3264333030687258374, guid: e2e80a6203cc91843b1ed340fd568fb2,
         type: 3}

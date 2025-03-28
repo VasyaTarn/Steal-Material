@@ -659,7 +659,13 @@ public class Stone : MaterialSkills, ISkinMaterialChanger, IActivateSkinMaterial
             StopCoroutine(_dashCoroutine);
 
             _canDash = true;
-            playerAnimationController.SetRollStatus(_canDash);
+            Player.GetComponent<RaycastPerformer>().isActiveRaycast = true;
+
+            playerAnimationController.SetRollStatus(false);
+            playerAnimationController.PlayBoolAnimation("IsRolling", false);
+
+            ChangeActiveStatusMovementModelRpc(Player.GetComponent<NetworkObject>(), false);
+
         }
     }
 }
