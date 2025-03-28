@@ -331,7 +331,7 @@ public class GameScoreManager : NetworkBehaviour
 
         if (IsServer)
         {
-            if (NetworkManager.Singleton.ConnectedClientsList.Count > 1 && _hostRoundScore.Value == 0 && _clientRoundScore.Value == 0)
+            if (NetworkManager.Singleton.ConnectedClientsList.Count == 2 && _hostRoundScore.Value == 0 && _clientRoundScore.Value == 0)
             {
                 StartRoundFinisherRpc(1f);
                 _playerSpawner.HostBarrier.SetActive(true);
