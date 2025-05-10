@@ -41,9 +41,9 @@ public class PlayerMovementController : NetworkBehaviour
     [Header("Cinemachine")]
     public GameObject cinemachineCameraTarget;
 
-    public float topClamp = 70.0f;
+    public float topClamp;
 
-    public float bottomClamp = -30.0f;
+    public float bottomClamp;
 
     public float cameraAngleOverride = 0.0f;
 

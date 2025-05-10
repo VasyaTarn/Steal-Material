@@ -76,7 +76,7 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger, IActi
     public override float meleeAttackCooldown { get; } = 2f;
     public override float rangeAttackCooldown { get; } = 0.2f;
     public override float movementCooldown { get; } = 5f;
-    public override float defenseCooldown { get; } = 7f;
+    public override float defenseCooldown { get; } = 12f;
     public override float specialCooldown { get; } = 3f;
 
     public override string projectilePrefabKey { get; } = ProjectileMapper.GetProjectileKey(ProjectileType.Plant);
@@ -430,11 +430,6 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger, IActi
     #region Defense
     public override void Defense()
     {
-        if(playerHealthController.OnDamageTaken == null)
-        {
-            playerHealthController.OnDamageTaken += HandleDamageTaken;
-        }
-
         if (!_isRetaliateEffectActive)
         {
             StartCoroutine(ActivateRetaliateEffect());
@@ -737,10 +732,14 @@ public class Plant : MaterialSkills, IUpdateHandler, ISkinMaterialChanger, IActi
         {
             StopHookshot();
         }
+
+        playerHealthController.OnDamageTaken -= HandleDamageTaken;
     }
 
     public void ActivateSkinMaterialAction()
     {
+        playerHealthController.OnDamageTaken += HandleDamageTaken;
+
         if (_deathSubscription == null)
         {
             _deathSubscription = playerHealthController.OnDeath

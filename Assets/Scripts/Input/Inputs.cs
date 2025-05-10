@@ -135,7 +135,7 @@ public class Inputs : NetworkBehaviour
         }
     }
 
-    // --- ServerRpc методы ---
+    // --- ServerRpc пїЅпїЅпїЅпїЅпїЅпїЅ ---
 
     [ServerRpc]
     private void SendMoveServerRpc(Vector2 moveValue)

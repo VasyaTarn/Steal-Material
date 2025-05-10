@@ -1,4 +1,5 @@
 using System;
+using Unity.Netcode;
 using UnityEngine;
 
 public class BasicProjectile : BulletProjectile
@@ -24,11 +25,16 @@ public class BasicProjectile : BulletProjectile
     {
         if (target.TryGetComponent(out PlayerHealthController healthController))
         {
+            NetworkObject player = target.GetComponent<NetworkObject>();
+
             if (healthController != null)
             {
                 if (isNetworkObject)
                 {
-                    healthController.TakeDamage(damage);
+                    if (player.OwnerClientId != ownerId)
+                    {
+                        healthController.TakeDamage(damage);
+                    }
                 }
                 else
                 {

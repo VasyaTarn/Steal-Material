@@ -26,6 +26,7 @@ public class PlayerObjectReferences : NetworkBehaviour
     [SerializeField] private GameObject _fireModelLocal;
     private NetworkVariable<NetworkObjectReference> _fireModelNetwork = new NetworkVariable<NetworkObjectReference>();
     [SerializeField] private GameObject _fireSkillRadius;
+    [SerializeField] private GameObject _astralVisualObject;
 
     private SkinView _skinView;
 
@@ -41,6 +42,7 @@ public class PlayerObjectReferences : NetworkBehaviour
     public GameObject BasicSkillRadius => _basicSkillRadius;
     public GameObject FireSkillRadius => _fireSkillRadius;
     public GameObject StoneMovementObject => _stoneMovementObject;
+    public GameObject AstralVisualObject => _astralVisualObject;
 
     private void Start()
     {

@@ -56,7 +56,7 @@ MonoBehaviour:
     Damage
     return percentage: 110 %
 
-    Cooldown: 7 s'
+    Cooldown: 12 s'
   _specialDescription: '<size=22><b>Summons living mushrooms at the cost of his health,
     which follow the enemy and explode upon contact. Destroyed 15 seconds after spawning*.
     When mushrooms explode, they apply a slow effect to the enemy and self-destruct.

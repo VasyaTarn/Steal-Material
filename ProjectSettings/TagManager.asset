@@ -7,6 +7,8 @@ TagManager:
   - Material
   - Projectile
   - CapturePoint
+  - asteroid
+  - ship
   layers:
   - Default
   - TransparentFX
@@ -19,7 +21,7 @@ TagManager:
   - Projectile
   - Wisp
   - CapturePoint
-  - 
+  - Barrier
   - 
   - 
   - 

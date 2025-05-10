@@ -9,24 +9,27 @@ public class FireProjectile : BulletProjectile
 {
     private GameObject _explosion;
 
-    private int _initialexplosionPoolSize = 10;
-    private LocalObjectPool _explosionPool;
+    private void OnDisable()
+    {
+        if (_explosion == null)
+        {
+            Addressables.LoadAssetAsync<GameObject>("Explosion").Completed += handle =>
+            {
+                if (handle.Status == AsyncOperationStatus.Succeeded)
+                {
+                    _explosion = handle.Result;
+                }
+                else
+                {
+                    Debug.LogError("Failed to load Explosion");
+                }
+            };
+        }
+    }
 
     protected override void Start()
     {
         base.Start();
-
-        Addressables.LoadAssetAsync<GameObject>("Explosion").Completed += handle =>
-        {
-            if (handle.Status == AsyncOperationStatus.Succeeded)
-            {
-                _explosion = handle.Result;
-            }
-            else
-            {
-                Debug.LogError("Failed to load Explosion");
-            }
-        };
 
         //_explosion = Resources.Load<GameObject>("Fire/Explosion");
     }
@@ -34,19 +37,22 @@ public class FireProjectile : BulletProjectile
     private void OnTriggerEnter(Collider other)
     {
         RaycastHit hit;
-        if (Physics.Raycast(transform.position - projectileRigidbody.velocity.normalized * 0.1f, projectileRigidbody.velocity.normalized, out hit, 1f))
+        if (projectileRigidbody != null)
         {
-            if (!IsServer)
+            if (Physics.Raycast(transform.position - projectileRigidbody.velocity.normalized * 0.1f, projectileRigidbody.velocity.normalized, out hit, 1f))
             {
+                if (!IsServer)
+                {
+                    if (!other.CompareTag("CapturePoint"))
+                    {
+                        SpawnExplosionLocal(hit.point + hit.normal * 3.5f);
+                    }
+                }
+
                 if (!other.CompareTag("CapturePoint"))
                 {
-                    SpawnExplosionLocal(hit.point + hit.normal * 3.5f);
+                    SpawnExplosionServerRpc(hit.point + hit.normal * 3.5f, ownerId);
                 }
-            }
-
-            if (!other.CompareTag("CapturePoint"))
-            {
-                SpawnExplosionServerRpc(hit.point + hit.normal * 3.5f, ownerId);
             }
         }
 
@@ -97,17 +103,9 @@ public class FireProjectile : BulletProjectile
 
     private void SpawnExplosionLocal(Vector3 explosionSpawnPoint)
     {
-        if (_explosionPool == null)
-        {
-            if (_explosion != null)
-            {
-                _explosionPool = new LocalObjectPool(_explosion, _initialexplosionPoolSize);
-            }
-        }
+        GameObject explosionburst = LocalProjectileManager.Instance.GetExplosionFromPool(explosionSpawnPoint);
 
-        GameObject explosionburst = _explosionPool.Get(explosionSpawnPoint);
-
-        ReleaseExplosionAsync(0.5f, () => _explosionPool.Release(explosionburst)).Forget();
+        ReleaseExplosionAsync(0.5f, () => LocalProjectileManager.Instance.GetPool().Release(explosionburst)).Forget();
     }
 
     [Rpc(SendTo.Server)]
@@ -138,11 +136,4 @@ public class FireProjectile : BulletProjectile
         await UniTask.Delay(TimeSpan.FromSeconds(duration), cancellationToken: this.GetCancellationTokenOnDestroy());
         releaseAction?.Invoke();
     }
-
-    /*private IEnumerator ReleaseExplosion(float duration, Action releaseAction)
-    {
-        yield return new WaitForSeconds(duration);
-        releaseAction?.Invoke();
-        Debug.Log("Test");
-    }*/
 }

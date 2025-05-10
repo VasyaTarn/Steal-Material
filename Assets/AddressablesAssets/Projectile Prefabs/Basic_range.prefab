@@ -804,7 +804,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e271c57acd5a0fe4294c1dff9524a8ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speed: 60
+  speed: 80
   damage: 15
-  isNetworkObject: 0
-  _crosshair: {fileID: 0}

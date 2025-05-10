@@ -34,6 +34,7 @@ public class UIReferencesManager : MonoBehaviour
     [SerializeField] private CanvasGroup _roundOverScreen;
     [SerializeField] private TMP_Text _waitingOpponentText;
     [SerializeField] private Volume _vignette;
+    [SerializeField] private CanvasGroup _damageIndicator;
 
     [Header("Abilities")]
     [SerializeField] private GameObject _abilityDescriptor;
@@ -68,6 +69,7 @@ public class UIReferencesManager : MonoBehaviour
     public GameObject FireChargeDisplayer => _fireChargeDisplayer;
     public Slider SensitivitySlider => _sensitivitySlider;
     public TMP_Text SensitivityValueText => _sensitivityValueText;
+    public CanvasGroup DamageIndicator => _damageIndicator;
 
 
     [Inject]

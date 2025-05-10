@@ -297,7 +297,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GlobalObjectIdHash: 3830357480
+  GlobalObjectIdHash: 1337114182
   InScenePlacedSourceGlobalObjectIdHash: 2777678800
   AlwaysReplicateAsRoot: 0
   SynchronizeTransform: 1
@@ -349,10 +349,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8fb82b0e25a45454a80a391780eda860, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speed: 80
+  speed: 60
   damage: 10
-  isNetworkObject: 0
-  _crosshair: {fileID: 0}
 --- !u!2083052967 &4573128643255511309
 VisualEffect:
   m_ObjectHideFlags: 0
